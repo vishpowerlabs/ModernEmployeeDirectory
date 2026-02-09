@@ -31,5 +31,7 @@ export interface IModernEmployeeDirectoryProps {
   filterType?: 'none' | 'domain' | 'extension' | 'department' | 'location';
   filterValue?: string;
   filterSecondaryValue?: string;
+  homePageFilterFields: string[];
+  dynamicFilterData?: { [key: string]: string[] };
 }
 

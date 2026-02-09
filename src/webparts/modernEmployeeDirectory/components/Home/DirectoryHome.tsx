@@ -16,6 +16,8 @@ export interface IDirectoryHomeProps {
     hasPrev?: boolean;
     selectedLetter?: string | null;
     onLetterChange?: (letter: string | null) => void;
+    homePageFilterFields?: string[];
+    dynamicFilterData?: { [key: string]: string[] };
 }
 
 export interface IEmployee {
@@ -181,18 +183,41 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
         employees, onSelectEmployee, onKudosForEmployee, enableKudos,
         onLoadMore, hasMore, loading,
         paginationType, onNextPage, onPrevPage, hasPrev,
-        selectedLetter, onLetterChange
+        selectedLetter, onLetterChange,
+        homePageFilterFields, dynamicFilterData
     } = props;
     const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [activeFilters, setActiveFilters] = React.useState<{ [key: string]: string }>({});
 
-    const filteredEmployees = employees.filter(emp =>
-        !emp._isOrgChartNode && (
-            emp.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (emp.jobTitle?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (emp.department?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-        )
-    );
+    const _handleFilterChange = (field: string, value: string): void => {
+        setActiveFilters(prev => ({
+            ...prev,
+            [field]: value === 'ALL' ? '' : value
+        }));
+    };
+
+    const filteredEmployees = employees.filter(emp => {
+        if (emp._isOrgChartNode) return false;
+
+        // Search text matching (Name, Job Title, Department)
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = !searchTerm ||
+            emp.displayName.toLowerCase().includes(searchLower) ||
+            (emp.jobTitle?.toLowerCase() || '').includes(searchLower) ||
+            (emp.department?.toLowerCase() || '').includes(searchLower);
+
+        if (!matchesSearch) return false;
+
+        // Dynamic multi-field filter matching
+        return Object.keys(activeFilters).every(field => {
+            const filterValue = activeFilters[field];
+            if (!filterValue) return true; // Filter is cleared
+
+            const empValue = (emp as any)[field];
+            return empValue === filterValue;
+        });
+    });
 
     return (
         <>
@@ -207,13 +232,19 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        <select className={styles.filterDropdown}>
-                            <option>All Departments</option>
-                            <option>Human Resources</option>
-                            <option>Engineering</option>
-                            <option>Sales</option>
-                            <option>Marketing</option>
-                        </select>
+                        {homePageFilterFields?.map(field => (
+                            <select
+                                key={field}
+                                className={styles.filterDropdown}
+                                value={activeFilters[field] || 'ALL'}
+                                onChange={(e) => _handleFilterChange(field, e.target.value)}
+                            >
+                                <option value="ALL">All {field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1').trim()}</option>
+                                {dynamicFilterData?.[field]?.map(val => (
+                                    <option key={val} value={val}>{val}</option>
+                                ))}
+                            </select>
+                        ))}
                         <div className={styles.viewToggle}>
                             <button
                                 className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}

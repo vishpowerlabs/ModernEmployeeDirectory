@@ -11,6 +11,7 @@
 .searchBar {
     display: flex;
     gap: var(--spacing-md);
+    flex-wrap: wrap;
 }
 
 .searchInput {

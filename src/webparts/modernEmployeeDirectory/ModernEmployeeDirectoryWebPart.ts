@@ -48,6 +48,7 @@ export interface IModernEmployeeDirectoryWebPartProps {
   filterType: 'none' | 'domain' | 'extension' | 'department' | 'location';
   filterValue: string;
   filterSecondaryValue: string;
+  homePageFilterFields: string[];
 }
 
 export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPart<IModernEmployeeDirectoryWebPartProps> {
@@ -89,7 +90,8 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
         minKudosCount: this.properties.minKudosCount || 0,
         filterType: this.properties.filterType || 'none',
         filterValue: this.properties.filterValue || '',
-        filterSecondaryValue: this.properties.filterSecondaryValue || ''
+        filterSecondaryValue: this.properties.filterSecondaryValue || '',
+        homePageFilterFields: this.properties.homePageFilterFields || []
       }
     );
 
@@ -464,7 +466,20 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                   PropertyPaneTextField('filterSecondaryValue', {
                     label: 'Attribute Value'
                   })
-                ] : [])
+                ] : []),
+                PropertyFieldMultiSelect('homePageFilterFields', {
+                  key: 'homePageFilterFields',
+                  label: 'Home Page Dropdown Filters',
+                  options: [
+                    { key: 'department', text: 'Department' },
+                    { key: 'officeLocation', text: 'Office Location' },
+                    { key: 'jobTitle', text: 'Job Title' },
+                    { key: 'city', text: 'City' },
+                    { key: 'state', text: 'State/Province' },
+                    { key: 'country', text: 'Country' }
+                  ],
+                  selectedKeys: this.properties.homePageFilterFields || []
+                })
               ]
             }
           ]

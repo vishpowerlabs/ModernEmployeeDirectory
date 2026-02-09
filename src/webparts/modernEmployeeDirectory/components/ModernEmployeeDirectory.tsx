@@ -45,6 +45,7 @@ export interface IModernEmployeeDirectoryState {
   prevPageLinks: string[];
   lastFetchedLink: string | null;
   selectedLetter: string | null;
+  dynamicFilterData: { [key: string]: string[] };
 }
 
 const MOCK_CURRENT_USER = {
@@ -76,7 +77,8 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       nextPageLink: null,
       prevPageLinks: [],
       lastFetchedLink: null,
-      selectedLetter: 'STAR'
+      selectedLetter: 'STAR',
+      dynamicFilterData: {}
     };
 
     if (props.context) {
@@ -95,6 +97,27 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         }
       );
     }
+  }
+
+  private readonly _fetchDynamicFilterValues = async (): Promise<void> => {
+    const { homePageFilterFields } = this.props;
+    if (!homePageFilterFields || homePageFilterFields.length === 0 || !this.graphService) return;
+
+    const dynamicFilterData: { [key: string]: string[] } = {};
+
+    // Fetch unique values for each configured field in parallel
+    const fetchPromises = homePageFilterFields.map(async field => {
+      try {
+        const values = await this.graphService!.getUniqueValues(field);
+        dynamicFilterData[field] = values;
+      } catch (error) {
+        console.error(`[ModernEmployeeDirectory] Error fetching unique values for ${field}:`, error);
+        dynamicFilterData[field] = [];
+      }
+    });
+
+    await Promise.all(fetchPromises);
+    this.setState({ dynamicFilterData });
   }
 
   public componentDidMount(): void {
@@ -146,6 +169,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       }
 
       await this._loadEmployees();
+      await this._fetchDynamicFilterValues();
 
       if (this.props.enableKudos && this.kudosService) {
         try {
@@ -163,6 +187,11 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       if (prevProps.dataSource !== this.props.dataSource) {
         console.log('[ModernEmployeeDirectory] Data source changed, reloading employees...');
         await this._loadEmployees();
+      }
+
+      if (JSON.stringify(prevProps.homePageFilterFields) !== JSON.stringify(this.props.homePageFilterFields)) {
+        console.log('[ModernEmployeeDirectory] Filter fields changed, fetching new values...');
+        await this._fetchDynamicFilterValues();
       }
 
       if (prevProps.profileLayout !== this.props.profileLayout && this.state.selectedEmployee) {
@@ -800,6 +829,8 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
               hasPrev={this.state.prevPageLinks.length > 0}
               selectedLetter={this.state.selectedLetter}
               onLetterChange={this._handleLetterChange}
+              homePageFilterFields={this.props.homePageFilterFields}
+              dynamicFilterData={this.state.dynamicFilterData}
             />
           )}
 
