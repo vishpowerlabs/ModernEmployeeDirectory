@@ -1,0 +1,238 @@
+.updateProfileForm {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    background: var(--bg-white);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-dark);
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-medium);
+    padding: 0;
+    line-height: 1;
+
+    &:hover {
+        color: var(--primary-blue);
+    }
+}
+
+.error {
+    background: #fde7e9;
+    color: #a4262c;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.success {
+    background: #dff6dd;
+    color: #107c10;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.formField {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.input,
+.textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+
+    &:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.1);
+    }
+
+    &:disabled {
+        background: var(--bg-light);
+        color: var(--text-light);
+        cursor: not-allowed;
+    }
+}
+
+.textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.actions {
+    margin-top: auto;
+    display: flex;
+    gap: 12px;
+    padding-top: 24px;
+}
+
+.submitButton,
+.cancelButton {
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.submitButton {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+
+    &:hover:not(:disabled) {
+        background: var(--primary-blue-hover);
+    }
+
+    &:disabled {
+        background: var(--border-medium);
+        cursor: not-allowed;
+    }
+}
+
+.cancelButton {
+    background: white;
+    color: var(--text-medium);
+    border: 1px solid var(--border-medium);
+
+    &:hover:not(:disabled) {
+        background: var(--bg-hover);
+        border-color: var(--primary-blue);
+        color: var(--primary-blue);
+    }
+}
+
+.recentUpdate {
+    font-size: 12px;
+    color: #107c10;
+    font-weight: 600;
+}
+
+.tagPicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    background: var(--bg-white);
+    min-height: 40px;
+    align-items: center;
+
+    &:focus-within {
+        border-color: var(--primary-blue);
+    }
+}
+
+.tagItem {
+    display: flex;
+    align-items: center;
+    background: var(--bg-hover);
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    color: var(--primary-blue);
+    border: 1px solid var(--border-light);
+}
+
+.tagText {
+    margin-right: 4px;
+}
+
+.removeTag {
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--text-medium);
+
+    &:hover {
+        color: var(--error-red);
+    }
+}
+
+.tagInput {
+    border: none;
+    outline: none;
+    flex: 1;
+    min-width: 80px;
+    font-size: 14px;
+    padding: 4px 0;
+    color: var(--text-main);
+}
+
+.loadingOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    border-radius: var(--radius-md);
+
+    p {
+        margin-top: 12px;
+        font-size: 14px;
+        color: var(--primary-blue);
+        font-weight: 600;
+    }
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border-medium);
+    border-top: 3px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

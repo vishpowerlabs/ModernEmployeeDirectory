@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "modern-employee-directory-client-side-solution",
+    "id": "a35f832d-1759-4c5f-b22a-cbb5ab2dde19",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.22.0"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "modern-employee-directory description"
+      },
+      "longDescription": {
+        "default": "modern-employee-directory description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "modern-employee-directory Feature",
+        "description": "The feature that activates elements of the modern-employee-directory solution.",
+        "id": "d8a54ce0-12d4-4ff0-8131-8a97ad6b7447",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/modern-employee-directory.sppkg"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "modern-employee-directory",
+    "environment": "spo",
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "react",
+    "componentName": "ModernEmployeeDirectory",
+    "componentDescription": "Modern Employee Directory Webpart",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "20.12.2",
+    "sdksVersions": {},
+    "version": "1.22.0",
+    "libraryName": "modern-employee-directory",
+    "libraryId": "a35f832d-1759-4c5f-b22a-cbb5ab2dde19",
+    "packageManager": "npm",
+    "solutionShortDescription": "modern-employee-directory description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false
+  }
+}

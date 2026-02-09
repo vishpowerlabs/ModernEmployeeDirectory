@@ -1,0 +1,103 @@
+.kudosFeed {
+    padding: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--textPrimary, #323130);
+}
+
+.giveKudosButton {
+    background: linear-gradient(135deg, #4c51bf 0%, #764ba2 100%);
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: transform 0.2s, box-shadow 0.2s;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.kudosCard {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.badgeIcon {
+    font-size: 32px;
+    flex-shrink: 0;
+}
+
+.authorInfo {
+    flex: 1;
+}
+
+.authorName {
+    font-weight: 600;
+    color: var(--textPrimary, #323130);
+    margin-bottom: 2px;
+}
+
+.timestamp {
+    font-size: 12px;
+    color: var(--textSecondary, #605e5c);
+}
+
+.message {
+    color: var(--textPrimary, #323130);
+    line-height: 1.5;
+    margin-left: 44px;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--textSecondary, #605e5c);
+}
+
+.emptyIcon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.emptyText {
+    font-size: 16px;
+}

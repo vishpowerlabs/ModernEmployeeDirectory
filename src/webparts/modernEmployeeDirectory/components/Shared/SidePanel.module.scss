@@ -1,0 +1,171 @@
+.userPanel {
+    position: fixed;
+    right: -450px;
+    top: 0;
+    width: 450px;
+    height: 100vh; // Ensure it takes full viewport height
+    background: var(--bg-white);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
+    transition: right 0.3s ease;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+
+    &.open {
+        right: 0;
+    }
+}
+
+.userPanelHeader {
+    padding: var(--spacing-sm) var(--spacing-lg); // Reduced padding
+    border-bottom: 2px solid var(--bg-hover);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-light); // Added background
+    height: 60px; // Fixed smaller height
+
+    h2 {
+        font-size: 18px; // Smaller font
+        font-weight: 600;
+        margin: 0;
+    }
+}
+
+.closePanel {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 24px;
+    color: var(--text-medium);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        background: var(--bg-hover);
+    }
+}
+
+.userPanelContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.userProfileCard {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-md); // Space between avatar and name
+}
+
+.userProfileAvatar {
+    width: 60px; // Slightly smaller again to fit nicely
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-hover) 100%);
+    margin: 0; // Remove auto margin
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--bg-white);
+    border: 3px solid var(--border-light); // Thinner border
+    box-shadow: var(--shadow-sm); // Softer shadow
+    position: relative;
+    flex-shrink: 0;
+    overflow: hidden; // Ensure image fits circular container
+
+    .avatarImage {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+.userProfileName {
+    font-size: 18px; // Reduced from 24px
+    font-weight: 600;
+    margin: 0;
+    text-align: left;
+}
+
+.userProfileEmail {
+    font-size: 14px;
+    color: var(--text-medium);
+    margin-bottom: var(--spacing-lg);
+    margin-top: 0;
+}
+
+.userPanelActions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.userActionBtn {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    background: var(--bg-white);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    transition: all 0.2s;
+
+    &.primary {
+        background: var(--primary-blue);
+        color: var(--bg-white);
+        border-color: var(--primary-blue);
+
+        &:hover {
+            background: var(--primary-blue-hover);
+        }
+    }
+
+    &:hover {
+        background: var(--bg-hover);
+        border-color: var(--primary-blue);
+    }
+}
+
+.userOnlineStatus {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    background: var(--online-green);
+    border: 4px solid var(--bg-white);
+    border-radius: 50%;
+}
+
+.emptyKudos {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-medium);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-light);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--border-medium);
+    margin-top: var(--spacing-lg);
+
+    p {
+        margin: 0;
+        font-size: 14px;
+    }
+}

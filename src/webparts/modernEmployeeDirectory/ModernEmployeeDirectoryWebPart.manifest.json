@@ -1,0 +1,45 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "89281e6e-40a3-4698-82aa-eddf93cfbeb9",
+  "alias": "ModernEmployeeDirectoryWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": [
+    "SharePointWebPart",
+    "TeamsPersonalApp",
+    "TeamsTab",
+    "SharePointFullPage"
+  ],
+  "supportsThemeVariants": true,
+  "preconfiguredEntries": [
+    {
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+      "group": {
+        "default": "Advanced"
+      },
+      "title": {
+        "default": "ModernEmployeeDirectory"
+      },
+      "description": {
+        "default": "Modern Employee Directory Webpart"
+      },
+      "officeFabricIconFontName": "Page",
+      "properties": {
+        "description": "ModernEmployeeDirectory",
+        "profileLayout": "scroll",
+        "dataSource": "mock",
+        "enableKudos": false,
+        "kudosListId": "",
+        "kudosRecipientColumn": "",
+        "kudosAuthorColumn": "",
+        "kudosMessageColumn": "",
+        "kudosBadgeTypeColumn": "",
+        "mainHeadingSize": 28,
+        "subHeadingSize": 24,
+        "contentHeadingSize": 14
+      }
+    }
+  ]
+}

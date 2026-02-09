@@ -1,0 +1,187 @@
+.giveKudosForm {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--textPrimary, #323130);
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--textSecondary, #605e5c);
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+
+    &:hover {
+        color: var(--textPrimary, #323130);
+    }
+}
+
+.formField {
+    margin-bottom: 20px;
+}
+
+.label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--textPrimary, #323130);
+}
+
+.recipientDisplay {
+    background: rgba(102, 126, 234, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    color: var(--textPrimary, #323130);
+    font-weight: 500;
+}
+
+.textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    transition: border-color 0.2s;
+
+    &:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+}
+
+.badgeSelector {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.badgeOption {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 24px;
+    transition: all 0.2s;
+
+    &:hover {
+        transform: scale(1.1);
+        border-color: #667eea;
+    }
+
+    &.selected {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+        transform: scale(1.1);
+    }
+}
+
+.badgeSelect {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.2s;
+
+    &:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.submitButton {
+    flex: 1;
+    background: linear-gradient(135deg, #4c51bf 0%, #764ba2 100%);
+    color: #ffffff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+
+    &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.cancelButton {
+    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 16px;
+    transition: background 0.2s;
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
+}
+
+.error {
+    background: rgba(255, 0, 0, 0.1);
+    color: #100000;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.success {
+    background: rgba(0, 200, 0, 0.1);
+    color: #004500;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 500;
+}

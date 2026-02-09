@@ -1,0 +1,50 @@
+/* 
+ * DEVELOPMENT ONLY - Full Width Workbench Styles
+ * 
+ * This file contains temporary CSS overrides for SPFx workbench testing.
+ * These styles force the web part to take full width in the workbench.
+ * 
+ * DO NOT include this in production builds.
+ * 
+ * To use: Add this file as a <link> tag in your browser's developer tools
+ * or paste these styles into the browser console.
+ */
+
+/* SPFx Workbench Container Overrides */
+.p_ZwSiC_hHQBj {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.CanvasComponent.LCS .CanvasZone {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+}
+
+.CanvasComponent {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.LCS {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.CanvasZone {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Additional workbench overrides */
+div[data-automation-id="CanvasZone"] {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.CanvasSection {
+    max-width: 100% !important;
+    width: 100% !important;
+}

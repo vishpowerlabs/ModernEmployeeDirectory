@@ -1,0 +1,491 @@
+import * as React from 'react';
+import * as ReactDom from 'react-dom';
+import { Version } from '@microsoft/sp-core-library';
+import {
+  type IPropertyPaneConfiguration,
+  PropertyPaneTextField,
+  PropertyPaneDropdown,
+  PropertyPaneSlider,
+  PropertyPaneToggle
+} from '@microsoft/sp-property-pane';
+import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
+import { IReadonlyTheme } from '@microsoft/sp-component-base';
+import { PropertyFieldListPicker, PropertyFieldListPickerOrderBy } from '@pnp/spfx-property-controls/lib/PropertyFieldListPicker';
+import { PropertyFieldColumnPicker, PropertyFieldColumnPickerOrderBy } from '@pnp/spfx-property-controls/lib/PropertyFieldColumnPicker';
+import { PropertyFieldMultiSelect } from '@pnp/spfx-property-controls/lib/PropertyFieldMultiSelect';
+import { PropertyFieldPeoplePicker, PrincipalType, IPropertyFieldGroupOrPerson } from '@pnp/spfx-property-controls/lib/PropertyFieldPeoplePicker';
+import '@pnp/sp/webs';
+import '@pnp/sp/lists';
+import '@pnp/sp/fields';
+
+import * as strings from 'ModernEmployeeDirectoryWebPartStrings';
+import ModernEmployeeDirectory from './components/ModernEmployeeDirectory';
+import { IModernEmployeeDirectoryProps } from './components/IModernEmployeeDirectoryProps';
+import { GraphService } from './services/GraphService';
+
+export interface IModernEmployeeDirectoryWebPartProps {
+  description: string;
+  profileLayout: 'scroll' | 'tab';
+  dataSource: 'mock' | 'graph';
+  mainHeadingSize: number;
+  subHeadingSize: number;
+  contentHeadingSize: number;
+  // Kudos System
+  enableKudos: boolean;
+  kudosListId: string;
+  kudosRecipientColumn: string;
+  kudosAuthorColumn: string;
+  kudosMessageColumn: string;
+  kudosBadgeTypeColumn: string;
+  orgChartLayout: 'vertical' | 'horizontal' | 'compact';
+  updatableFields: string[];
+  enablePagination: boolean;
+  pageSize: number;
+  paginationType: 'loadMore' | 'prevNext';
+  // Hall of Fame
+  featuredPeople: IPropertyFieldGroupOrPerson[];
+  minKudosCount: number;
+  filterType: 'none' | 'domain' | 'extension' | 'department' | 'location';
+  filterValue: string;
+  filterSecondaryValue: string;
+}
+
+export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPart<IModernEmployeeDirectoryWebPartProps> {
+
+  private _isDarkTheme: boolean = false;
+  private _environmentMessage: string = '';
+  private _graphService: GraphService | undefined;
+  private _departments: string[] = [];
+  private _locations: string[] = [];
+  private _loadingFilters: boolean = false;
+
+  public render(): void {
+    const element: React.ReactElement<IModernEmployeeDirectoryProps> = React.createElement(
+      ModernEmployeeDirectory,
+      {
+        description: this.properties.description,
+        isDarkTheme: this._isDarkTheme,
+        environmentMessage: this._environmentMessage,
+        hasTeamsContext: !!this.context.sdks.microsoftTeams,
+        userDisplayName: this.context.pageContext.user.displayName,
+        profileLayout: this.properties.profileLayout || 'scroll',
+        dataSource: this.properties.dataSource || 'mock',
+        mainHeadingSize: this.properties.mainHeadingSize || 28,
+        subHeadingSize: this.properties.subHeadingSize || 24,
+        contentHeadingSize: this.properties.contentHeadingSize || 14,
+        context: this.context,
+        enableKudos: this.properties.enableKudos || false,
+        kudosListId: this.properties.kudosListId || '',
+        kudosRecipientColumn: this.properties.kudosRecipientColumn || 'Recipient',
+        kudosAuthorColumn: this.properties.kudosAuthorColumn || 'Author',
+        kudosMessageColumn: this.properties.kudosMessageColumn || 'Message',
+        kudosBadgeTypeColumn: this.properties.kudosBadgeTypeColumn || 'BadgeType',
+        orgChartLayout: this.properties.orgChartLayout || 'vertical',
+        updatableFields: this.properties.updatableFields || [],
+        enablePagination: this.properties.enablePagination || false,
+        pageSize: this.properties.pageSize || 10,
+        paginationType: this.properties.paginationType || 'loadMore',
+        featuredEmails: this.properties.featuredPeople ? this.properties.featuredPeople.map(p => p.email).filter(e => !!e) as string[] : [],
+        minKudosCount: this.properties.minKudosCount || 0,
+        filterType: this.properties.filterType || 'none',
+        filterValue: this.properties.filterValue || '',
+        filterSecondaryValue: this.properties.filterSecondaryValue || ''
+      }
+    );
+
+    ReactDom.render(element, this.domElement);
+  }
+
+
+
+  protected onPropertyPaneFieldChanged(propertyPath: string, oldValue: any, newValue: any): void {
+    // Force re-render when properties change
+    // This ensures immediate UI updates for layout and data source changes
+    super.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
+    this.render();
+  }
+
+  protected onInit(): Promise<void> {
+    this._graphService = new GraphService(this.context);
+    return this._getEnvironmentMessage().then(message => {
+      this._environmentMessage = message;
+    });
+  }
+
+  protected onPropertyPaneConfigurationStart(): void {
+    if (this._departments.length > 0 || this._locations.length > 0 || this._loadingFilters) {
+      return;
+    }
+
+    void this._fetchUniqueFilterValues();
+  }
+
+  private async _fetchUniqueFilterValues(): Promise<void> {
+    if (!this._graphService) return;
+
+    this._loadingFilters = true;
+    this.context.propertyPane.refresh();
+
+    try {
+      const [departments, locations] = await Promise.all([
+        this._graphService.getUniqueValues('department'),
+        this._graphService.getUniqueValues('officeLocation')
+      ]);
+
+      this._departments = departments;
+      this._locations = locations;
+    } catch (error) {
+      console.error('[WebPart] Error fetching unique filter values:', error);
+    } finally {
+      this._loadingFilters = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+
+  private async onKudosColumnChange(propertyPath: string, oldValue: any, newValue: any): Promise<void> {
+    console.log('[WebPart] Column changed:', { propertyPath, oldValue, newValue });
+
+    // If a column GUID is selected, resolve it to internal name
+    if (newValue && this.properties.kudosListId) {
+      try {
+        // Import PnP dynamically
+        const { spfi } = await import('@pnp/sp');
+        const { SPFx } = await import('@pnp/sp');
+        const sp = spfi().using(SPFx(this.context));
+
+        // Fetch the field to get its internal name
+        const field = await sp.web.lists.getById(this.properties.kudosListId).fields.getById(newValue)();
+        const internalName = field.InternalName;
+
+        console.log('[WebPart] Resolved column GUID', newValue, 'to internal name:', internalName);
+
+        // Save the internal name instead of the GUID
+        this.onPropertyPaneFieldChanged(propertyPath, oldValue, internalName);
+      } catch (error) {
+        console.error('[WebPart] Error resolving column name, saving GUID:', error);
+        // If resolution fails, save the GUID (will cause errors but at least saves something)
+        this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
+      }
+    } else {
+      this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
+    }
+  }
+
+
+
+  private _getEnvironmentMessage(): Promise<string> {
+    if (this.context.sdks.microsoftTeams) { // running in Teams, office.com or Outlook
+      return this.context.sdks.microsoftTeams.teamsJs.app.getContext()
+        .then(context => {
+          let environmentMessage: string = '';
+          switch (context.app.host.name) {
+            case 'Office': // running in Office
+              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOffice : strings.AppOfficeEnvironment;
+              break;
+            case 'Outlook': // running in Outlook
+              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOutlook : strings.AppOutlookEnvironment;
+              break;
+            case 'Teams': // running in Teams
+            case 'TeamsModern':
+              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentTeams : strings.AppTeamsTabEnvironment;
+              break;
+            default:
+              environmentMessage = strings.UnknownEnvironment;
+          }
+
+          return environmentMessage;
+        });
+    }
+
+    return Promise.resolve(this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentSharePoint : strings.AppSharePointEnvironment);
+  }
+
+  protected onThemeChanged(currentTheme: IReadonlyTheme | undefined): void {
+    if (!currentTheme) {
+      return;
+    }
+
+    this._isDarkTheme = !!currentTheme.isInverted;
+    const {
+      semanticColors
+    } = currentTheme;
+
+    if (semanticColors) {
+      this.domElement.style.setProperty('--bodyText', semanticColors.bodyText || null);
+      this.domElement.style.setProperty('--link', semanticColors.link || null);
+      this.domElement.style.setProperty('--linkHovered', semanticColors.linkHovered || null);
+    }
+
+  }
+
+  protected onDispose(): void {
+    ReactDom.unmountComponentAtNode(this.domElement);
+  }
+
+  protected get dataVersion(): Version {
+    return Version.parse('1.0');
+  }
+
+  protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
+    return {
+      pages: [
+        {
+          header: {
+            description: strings.PropertyPaneDescription
+          },
+          groups: [
+            {
+              groupName: strings.BasicGroupName,
+              groupFields: [
+                PropertyPaneTextField('description', {
+                  label: strings.DescriptionFieldLabel
+                }),
+                PropertyPaneDropdown('profileLayout', {
+                  label: 'Profile Layout',
+                  options: [
+                    { key: 'scroll', text: 'Scrolling' },
+                    { key: 'tab', text: 'Tabbed' }
+                  ]
+                }),
+                PropertyPaneDropdown('dataSource', {
+                  label: 'Data Source',
+                  options: [
+                    { key: 'mock', text: 'Mock Data (Development)' },
+                    { key: 'graph', text: 'Microsoft Graph API' }
+                  ]
+                }),
+                PropertyPaneDropdown('orgChartLayout', {
+                  label: 'Org Chart Layout',
+                  options: [
+                    { key: 'vertical', text: 'Vertical Tree' },
+                    { key: 'horizontal', text: 'Horizontal Tree' },
+                    { key: 'compact', text: 'Compact List' }
+                  ]
+                }),
+                PropertyFieldMultiSelect('updatableFields', {
+                  key: 'updatableFields',
+                  label: 'Updatable Profile Fields',
+                  options: [
+                    { key: 'jobTitle', text: 'Job Title' },
+                    { key: 'aboutMe', text: 'Bio (About Me)' },
+                    { key: 'mobilePhone', text: 'Mobile Phone' },
+                    { key: 'officeLocation', text: 'Office Location' },
+                    { key: 'skills', text: 'Skills' },
+                    { key: 'interests', text: 'Interests' },
+                    { key: 'pastProjects', text: 'Past Projects' }
+                  ],
+                  selectedKeys: this.properties.updatableFields
+                }),
+                PropertyPaneToggle('enablePagination', {
+                  label: 'Enable Pagination',
+                  onText: 'Enabled',
+                  offText: 'Disabled'
+                }),
+                PropertyPaneSlider('pageSize', {
+                  label: 'Users per page',
+                  min: 5,
+                  max: 50,
+                  step: 1,
+                  value: this.properties.pageSize || 10,
+                  showValue: true,
+                  disabled: !this.properties.enablePagination
+                }),
+                PropertyPaneDropdown('paginationType', {
+                  label: 'Pagination style',
+                  options: [
+                    { key: 'loadMore', text: 'Load More' },
+                    { key: 'prevNext', text: 'Previous / Next' }
+                  ],
+                  selectedKey: this.properties.paginationType || 'loadMore',
+                  disabled: !this.properties.enablePagination
+                })
+              ]
+            },
+            {
+              groupName: 'Font Size Settings',
+              groupFields: [
+                PropertyPaneSlider('mainHeadingSize', {
+                  label: 'Homepage Title Font Size',
+                  min: 20,
+                  max: 40,
+                  step: 1,
+                  value: this.properties.mainHeadingSize || 28,
+                  showValue: true
+                }),
+                PropertyPaneSlider('subHeadingSize', {
+                  label: 'Detail Page Title Font Size (Profile Page)',
+                  min: 16,
+                  max: 32,
+                  step: 1,
+                  value: this.properties.subHeadingSize || 24,
+                  showValue: true
+                }),
+                PropertyPaneSlider('contentHeadingSize', {
+                  label: 'Section Heading Font Size (User Name)',
+                  min: 12,
+                  max: 24,
+                  step: 1,
+                  value: this.properties.contentHeadingSize || 14,
+                  showValue: true
+                })
+              ]
+            },
+            {
+              groupName: 'Kudos System',
+              groupFields: [
+                PropertyPaneToggle('enableKudos', {
+                  label: 'Enable Kudos',
+                  onText: 'Enabled',
+                  offText: 'Disabled'
+                }),
+                PropertyPaneSlider('minKudosCount', {
+                  label: 'Min Kudos for Hall of Fame',
+                  min: 0,
+                  max: 20,
+                  step: 1,
+                  value: this.properties.minKudosCount || 0,
+                  showValue: true,
+                  disabled: !this.properties.enableKudos
+                }),
+                ...(this.properties.enableKudos ? [
+                  PropertyFieldListPicker('kudosListId', {
+                    label: 'Select Kudos List',
+                    selectedList: this.properties.kudosListId,
+                    includeHidden: false,
+                    orderBy: PropertyFieldListPickerOrderBy.Title,
+                    disabled: false,
+                    onPropertyChange: this.onPropertyPaneFieldChanged.bind(this),
+                    properties: this.properties,
+                    context: this.context as any,
+                    deferredValidationTime: 0,
+                    key: 'kudosListPickerFieldId'
+                  }),
+                  ...(this.properties.kudosListId ? [
+                    PropertyFieldColumnPicker('kudosRecipientColumn', {
+                      label: 'Recipient Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.kudosRecipientColumn,
+                      listId: this.properties.kudosListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onKudosColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'kudosRecipientColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyFieldColumnPicker('kudosAuthorColumn', {
+                      label: 'Author Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.kudosAuthorColumn,
+                      listId: this.properties.kudosListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onKudosColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'kudosAuthorColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyFieldColumnPicker('kudosMessageColumn', {
+                      label: 'Message Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.kudosMessageColumn,
+                      listId: this.properties.kudosListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onKudosColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'kudosMessageColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyFieldColumnPicker('kudosBadgeTypeColumn', {
+                      label: 'Badge Type Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.kudosBadgeTypeColumn,
+                      listId: this.properties.kudosListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onKudosColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'kudosBadgeTypeColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    })
+                  ] : [])
+                ] : [])
+              ]
+            },
+            {
+              groupName: 'Hall of Fame Settings',
+              groupFields: [
+                PropertyFieldPeoplePicker('featuredPeople', {
+                  label: 'Manually Featured People',
+                  initialData: this.properties.featuredPeople,
+                  allowDuplicate: false,
+                  principalType: [PrincipalType.Users],
+                  onPropertyChange: this.onPropertyPaneFieldChanged.bind(this),
+                  context: this.context as any,
+                  properties: this.properties,
+                  onGetErrorMessage: null as any,
+                  deferredValidationTime: 0,
+                  key: 'peopleFieldId'
+                })
+              ]
+            },
+            {
+              groupName: 'Organization Filters',
+              groupFields: [
+                PropertyPaneDropdown('filterType', {
+                  label: 'Filter Type',
+                  options: [
+                    { key: 'none', text: 'None' },
+                    { key: 'department', text: 'By Department' },
+                    { key: 'location', text: 'By Office Location' },
+                    { key: 'domain', text: 'By Email Domain' },
+                    { key: 'extension', text: 'By Extension Attribute' }
+                  ],
+                  selectedKey: this.properties.filterType || 'none'
+                }),
+                ...(this.properties.filterType && this.properties.filterType !== 'none' ? [
+                  (this.properties.filterType === 'department' || this.properties.filterType === 'location') ?
+                    PropertyPaneDropdown('filterValue', {
+                      label: this._getFilterValueLabel(),
+                      options: (this.properties.filterType === 'department' ? this._departments : this._locations)
+                        .map(v => ({ key: v, text: v })),
+                      disabled: this._loadingFilters
+                    }) :
+                    PropertyPaneTextField('filterValue', {
+                      label: this._getFilterValueLabel()
+                    })
+                ] : []),
+                ...(this.properties.filterType === 'extension' ? [
+                  PropertyPaneTextField('filterSecondaryValue', {
+                    label: 'Attribute Value'
+                  })
+                ] : [])
+              ]
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private _getFilterValueLabel(): string {
+    switch (this.properties.filterType) {
+      case 'department':
+        return 'Department Name';
+      case 'location':
+        return 'Office Location';
+      case 'domain':
+        return 'Domain (e.g. contoso.com)';
+      case 'extension':
+        return 'Attribute Name (e.g. CustomAttribute1)';
+      default:
+        return 'Filter Value';
+    }
+  }
+
+}
