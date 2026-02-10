@@ -21,6 +21,8 @@ export interface IGraphUser {
     skills?: string[];
     interests?: string[];
     pastProjects?: string[];
+    // Index signature for dynamic access
+    [key: string]: string | string[] | undefined;
 }
 
 export interface IGraphPresence {
@@ -82,7 +84,7 @@ export class GraphService {
             while (nextLink) {
                 const response = await client.api(nextLink).get();
                 const users = response.value || [];
-                users.forEach((u: any) => {
+                users.forEach((u: IGraphUser) => {
                     const val = u[field];
                     if (val && typeof val === 'string') uniqueValues.add(val);
                 });
@@ -94,7 +96,7 @@ export class GraphService {
 
             return Array.from(uniqueValues).sort((a, b) => a.localeCompare(b));
         } catch (error) {
-            console.error(`[GraphService] Error fetching unique values for ${field}:`, error);
+            console.error('[GraphService] Error in getUniqueValues:', error);
             return [];
         }
     }
@@ -162,7 +164,7 @@ export class GraphService {
                 nextLink: nextLink
             };
         } catch (error) {
-            console.error('[GraphService] Error fetching users:', error);
+            console.error('[GraphService] Error in getUsers:', error);
             return { users: [], nextLink: null };
         }
     }
@@ -200,7 +202,7 @@ export class GraphService {
                 nextLink: nextLinkResult
             };
         } catch (error) {
-            console.error('[GraphService] Error fetching more users:', error);
+            console.error('[GraphService] Error in getMoreUsers:', error);
             return { users: [], nextLink: null };
         }
     }
@@ -220,7 +222,7 @@ export class GraphService {
 
             return user;
         } catch (error) {
-            console.error('[GraphService] Error fetching user:', error);
+            console.error('[GraphService] Error in getUser:', error);
             return null;
         }
     }
@@ -258,7 +260,7 @@ export class GraphService {
 
             return results;
         } catch (error) {
-            console.error('[GraphService] Error fetching users by emails:', error);
+            console.error('[GraphService] Error in getUsersByEmails:', error);
             return [];
         }
     }
@@ -277,7 +279,7 @@ export class GraphService {
 
             return user;
         } catch (error) {
-            console.error('[GraphService] Error fetching current user:', error);
+            console.error('[GraphService] Error in getCurrentUser:', error);
             return null;
         }
     }
@@ -296,10 +298,9 @@ export class GraphService {
                 .select('id,displayName,givenName,surname,jobTitle,department,officeLocation,city,state,country,mail,userPrincipalName,mobilePhone,businessPhones,aboutMe,skills,interests,pastProjects')
                 .get();
 
-            console.log('[GraphService] Fetched user details for:', userId, user);
             return user;
         } catch (error) {
-            console.error('[GraphService] Error fetching user details:', error);
+            console.error('[GraphService] Error in getUserDetails:', error);
             // Fall back to basic user info if extended fields fail
             return await this.getUser(userId);
         }
@@ -382,7 +383,7 @@ export class GraphService {
         } catch (error) {
             // User might not have a photo, which results in a 404. 
             // This is a common case and not a failure of the service logic.
-            console.log('[GraphService] No photo available for user:', userId, error);
+            console.log('[GraphService] No photo found for user:', userId, error);
             return null;
         }
     }
@@ -638,12 +639,10 @@ export class GraphService {
 
             // Use Graph Beta PATCH /me for profile updates (supports skills and interests directly)
             await client.api('/me').version('beta').patch(fields);
-            console.log('[GraphService] Profile updated successfully via Beta API');
 
             return { success: true };
-        } catch (error: any) {
-            console.error('[GraphService] Error updating profile via Beta API:', error);
-            return { success: false, details: error.message };
+        } catch (error) {
+            return { success: false, details: (error as Error).message };
         }
     }
 }

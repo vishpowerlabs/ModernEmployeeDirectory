@@ -33,9 +33,6 @@ export class KudosService {
 
     private async resolveColumnNames(): Promise<void> {
         try {
-            console.log('[KudosService] Resolving column names from GUIDs...');
-            console.log('[KudosService] Original config:', this.config);
-
             const resolvedConfig: IKudosServiceConfig = {
                 listId: this.config.listId,
                 recipientColumn: this.config.recipientColumn,
@@ -50,29 +47,24 @@ export class KudosService {
             if (guidPattern.test(this.config.recipientColumn)) {
                 const field = await this.sp.web.lists.getById(this.config.listId).fields.getById(this.config.recipientColumn)();
                 resolvedConfig.recipientColumn = field.InternalName;
-                console.log('[KudosService] Resolved recipientColumn:', field.InternalName);
             }
 
             if (guidPattern.test(this.config.authorColumn)) {
                 const field = await this.sp.web.lists.getById(this.config.listId).fields.getById(this.config.authorColumn)();
                 resolvedConfig.authorColumn = field.InternalName;
-                console.log('[KudosService] Resolved authorColumn:', field.InternalName);
             }
 
             if (guidPattern.test(this.config.messageColumn)) {
                 const field = await this.sp.web.lists.getById(this.config.listId).fields.getById(this.config.messageColumn)();
                 resolvedConfig.messageColumn = field.InternalName;
-                console.log('[KudosService] Resolved messageColumn:', field.InternalName);
             }
 
             if (guidPattern.test(this.config.badgeTypeColumn)) {
                 const field = await this.sp.web.lists.getById(this.config.listId).fields.getById(this.config.badgeTypeColumn)();
                 resolvedConfig.badgeTypeColumn = field.InternalName;
-                console.log('[KudosService] Resolved badgeTypeColumn:', field.InternalName);
             }
 
             this.resolvedConfig = resolvedConfig;
-            console.log('[KudosService] ✅ Resolution complete. Resolved config:', this.resolvedConfig);
         } catch (error) {
             console.error('[KudosService] Error resolving column names:', error);
             // Fall back to original config
@@ -103,13 +95,11 @@ export class KudosService {
 
             // Check if it's a choice field
             if (field.FieldTypeKind === 6) { // 6 = Choice field
-                const choiceField = field as any;
+                const choiceField = field as { Choices: string[] };
                 const choices = choiceField.Choices || [];
-                console.log('[KudosService] Badge type choices:', choices);
                 return choices;
             }
 
-            console.warn('[KudosService] Badge type column is not a choice field');
             return [];
         } catch (error) {
             console.error('[KudosService] Error fetching badge type choices:', error);
@@ -119,21 +109,16 @@ export class KudosService {
 
     public async getKudosForUser(userId: string): Promise<IKudos[]> {
         try {
-            console.log('[KudosService] getKudosForUser called with userId:', userId);
             const config = await this.getConfig();
-            console.log('[KudosService] Using config:', config);
 
             if (!config.listId) {
-                console.warn('[KudosService] No list ID configured');
                 return [];
             }
 
             // First, ensure the user and get their ID
             const user = await this.sp.web.ensureUser(userId);
-            console.log('[KudosService] Resolved user:', { Id: user.Id, LoginName: user.LoginName, Email: user.Email });
 
             const filterQuery = `${config.recipientColumn}Id eq ${user.Id}`;
-            console.log('[KudosService] Filter query:', filterQuery);
 
             const items = await this.sp.web.lists
                 .getById(config.listId)
@@ -143,10 +128,7 @@ export class KudosService {
                 .select('Id', 'Created', config.messageColumn, config.badgeTypeColumn, 'Author/Title', 'Author/EMail')
                 .orderBy('Created', false)();
 
-            console.log('[KudosService] Fetched items count:', items.length);
-            console.log('[KudosService] Fetched items:', items);
-
-            return items.map((item: any) => ({
+            return items.map((item) => ({
                 id: item.Id.toString(),
                 recipientId: userId,
                 recipientName: '',
@@ -164,11 +146,9 @@ export class KudosService {
 
     public async getKudosCount(userId: string): Promise<number> {
         try {
-            console.log('[KudosService] Fetching kudos count for user:', userId);
             const config = await this.getConfig();
 
             const user = await this.sp.web.ensureUser(userId);
-            console.log('[KudosService] Resolved user ID:', user.Id);
 
             const items = await this.sp.web.lists
                 .getById(config.listId)
@@ -176,7 +156,6 @@ export class KudosService {
                 .filter(`${config.recipientColumn}Id eq ${user.Id}`)
                 .select('Id')();
 
-            console.log('[KudosService] Kudos count for', userId, ':', items.length);
             return items.length;
         } catch (error) {
             console.error('[KudosService] Error fetching kudos count for', userId, ':', error);
@@ -192,7 +171,6 @@ export class KudosService {
         if (minCount <= 0) return [];
 
         try {
-            console.log('[KudosService] Finding candidates with min kudos:', minCount);
             const config = await this.getConfig();
 
             if (!config.listId) return [];
@@ -206,16 +184,14 @@ export class KudosService {
                 .expand(config.recipientColumn)();
 
             const counts: { [email: string]: number } = {};
-            items.forEach((item: any) => {
+            items.forEach((item) => {
                 const email = item[config.recipientColumn]?.EMail;
                 if (email) {
                     counts[email] = (counts[email] || 0) + 1;
                 }
             });
 
-            const candidates = Object.keys(counts).filter(email => counts[email] >= minCount);
-            console.log('[KudosService] Found Hall of Fame candidates:', candidates);
-            return candidates;
+            return Object.keys(counts).filter(email => counts[email] >= minCount);
 
         } catch (error) {
             console.error('[KudosService] Error finding Hall of Fame candidates:', error);
@@ -225,15 +201,12 @@ export class KudosService {
 
     public async giveKudos(recipientId: string, recipientName: string, message: string, badgeType: string): Promise<boolean> {
         try {
-            console.log('[KudosService] giveKudos called:', { recipientId, recipientName, message, badgeType });
             const config = await this.getConfig();
-            console.log('[KudosService] Using config for giveKudos:', config);
 
             // Ensure the recipient user exists and get their ID
             const recipientUser = await this.sp.web.ensureUser(recipientId);
-            console.log('[KudosService] Resolved recipient user ID:', recipientUser.Id);
 
-            const itemData: any = {
+            const itemData: Record<string, string | number> = {
                 [config.messageColumn]: message,
                 [config.badgeTypeColumn]: badgeType
             };
@@ -241,13 +214,10 @@ export class KudosService {
             // Set the recipient using the lookup field format
             itemData[`${config.recipientColumn}Id`] = recipientUser.Id;
 
-            console.log('[KudosService] Creating item with data:', itemData);
-
             await this.sp.web.lists
                 .getById(config.listId)
                 .items.add(itemData);
 
-            console.log('[KudosService] Kudos saved successfully');
             return true;
         } catch (error) {
             console.error('[KudosService] Error giving kudos:', error);

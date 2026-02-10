@@ -59,7 +59,7 @@ const MOCK_CURRENT_USER = {
 
 export default class ModernEmployeeDirectory extends React.Component<IModernEmployeeDirectoryProps, IModernEmployeeDirectoryState> {
   private kudosService: KudosService | null = null;
-  private graphService: GraphService | null = null;
+  private readonly graphService: GraphService | null = null;
   private auditService: AuditService | null = null;
   private _loadToken: number = 0;
 
@@ -135,7 +135,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         const values = await this.graphService!.getUniqueValues(field);
         dynamicFilterData[field] = values;
       } catch (error) {
-        console.error(`[ModernEmployeeDirectory] Error fetching unique values for ${field}:`, error);
+        console.error('[ModernEmployeeDirectory] Error fetching dynamic filter values for field:', field, error);
         dynamicFilterData[field] = [];
       }
     });
@@ -156,12 +156,11 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
   }
 
   public componentDidMount(): void {
-    void (async (): Promise<void> => {
-      void this._fetchTopKudosEmails();
+    (async (): Promise<void> => {
+      this._fetchTopKudosEmails().catch(err => { console.error(err); });
 
       try {
         const currentUser = this.props.context.pageContext.user;
-        console.log('[ModernEmployeeDirectory] Current user from context:', currentUser);
 
         this.setState({
           currentUser: {
@@ -170,37 +169,11 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
             name: currentUser.displayName,
             email: currentUser.loginName || currentUser.email
           }
-        }, async () => {
-          if (this.graphService) {
-            try {
-              // Fetch actual Graph UUID for 'me' to ensure matching in Org Chart
-              const me = await this.graphService.getCurrentUser();
-              if (me) {
-                this.setState(prevState => ({
-                  currentUser: {
-                    ...prevState.currentUser,
-                    id: me.id,
-                    jobTitle: me.jobTitle,
-                    mobilePhone: me.mobilePhone
-                  }
-                }));
-                console.log('[ModernEmployeeDirectory] ✅ Synced current user Graph ID:', me.id);
-              }
-
-              const photoUrl = await this.graphService.getUserPhoto('me');
-              if (photoUrl) {
-                this.setState(prevState => ({
-                  currentUser: { ...prevState.currentUser, photoUrl }
-                }));
-                console.log('[ModernEmployeeDirectory] ✅ Fetched current user photo');
-              }
-            } catch (error) {
-              console.warn('[ModernEmployeeDirectory] No photo for current user:', error);
-            }
-          }
+        }, () => {
+          this._initializeCurrentUser().catch(err => { console.error(err); });
         });
       } catch (error) {
-        console.error('[ModernEmployeeDirectory] Error getting current user:', error);
+        console.error('[ModernEmployeeDirectory] Error in componentDidMount:', error);
       }
 
       await this._loadEmployees();
@@ -214,81 +187,145 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
           console.error('[ModernEmployeeDirectory] Error loading badge choices:', error);
         }
       }
-    })();
+    })().catch(err => { console.error(err); });
+  }
+
+  private async _initializeCurrentUser(): Promise<void> {
+    if (!this.graphService) return;
+
+    try {
+      const currentUser = await this.graphService.getCurrentUser();
+
+      if (currentUser) {
+        let currentUserId = currentUser.id;
+
+        this.setState(prevState => ({
+          currentUser: {
+            ...prevState.currentUser,
+            id: currentUser.id,
+            jobTitle: currentUser.jobTitle,
+            mobilePhone: currentUser.mobilePhone,
+            aboutMe: currentUser.aboutMe,
+            officeLocation: currentUser.officeLocation,
+            skills: currentUser.skills,
+            interests: currentUser.interests,
+            pastProjects: currentUser.pastProjects
+          }
+        }));
+
+        // If ID is missing (rare), try to get it from context
+        if (!currentUserId) {
+          try {
+            const me = await this.graphService.getUser(this.props.context.pageContext.user.email);
+            if (me) {
+              currentUserId = me.id;
+              this.setState(prevState => ({
+                currentUser: { ...prevState.currentUser, id: me.id }
+              }));
+            }
+          } catch (error) {
+            console.error('[ModernEmployeeDirectory] Error fetching current user ID from context:', error);
+          }
+        }
+
+        // Fetch photo
+        if (currentUserId) {
+          const photo = await this.graphService.getUserPhoto(currentUserId);
+          if (photo) {
+            this.setState(prevState => ({
+              currentUser: { ...prevState.currentUser, photoUrl: photo }
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[ModernEmployeeDirectory] Error fetching current user:', error);
+    }
   }
 
   public componentDidUpdate(prevProps: IModernEmployeeDirectoryProps): void {
-    void (async (): Promise<void> => {
+    (async (): Promise<void> => {
+      // Handle Filter Field Changes
       if (JSON.stringify(prevProps.homePageFilterFields) !== JSON.stringify(this.props.homePageFilterFields)) {
-        console.log('[ModernEmployeeDirectory] Filter fields changed, fetching new values...');
         await this._fetchDynamicFilterValues();
       }
 
+      // Handle Layout Changes
       if (prevProps.profileLayout !== this.props.profileLayout && this.state.selectedEmployee) {
-        console.log('[ModernEmployeeDirectory] Layout changed, switching profile view...');
         this.setState({
           currentView: this.props.profileLayout === 'scroll' ? 'PROFILE_SCROLL' : 'PROFILE_TAB'
         });
       }
 
-      if (prevProps.enableKudos !== this.props.enableKudos ||
-        prevProps.kudosListId !== this.props.kudosListId ||
-        prevProps.kudosRecipientColumn !== this.props.kudosRecipientColumn ||
-        prevProps.kudosAuthorColumn !== this.props.kudosAuthorColumn ||
-        prevProps.kudosMessageColumn !== this.props.kudosMessageColumn ||
-        prevProps.kudosBadgeTypeColumn !== this.props.kudosBadgeTypeColumn) {
+      // Handle Component-Specific Setting Changes
+      await this._handleKudosPropChanges(prevProps);
+      await this._handleFilterSettingChanges(prevProps);
+      this._handleAuditPropChanges(prevProps);
+    })().catch(err => { console.error(err); });
+  }
 
-        console.log('[ModernEmployeeDirectory] Kudos settings changed, re-initializing service...');
-        if (this.props.enableKudos && this.props.kudosListId) {
-          this.kudosService = new KudosService(this.props.context, {
-            listId: this.props.kudosListId,
-            recipientColumn: this.props.kudosRecipientColumn,
-            authorColumn: this.props.kudosAuthorColumn,
-            messageColumn: this.props.kudosMessageColumn,
-            badgeTypeColumn: this.props.kudosBadgeTypeColumn
-          });
+  private async _handleKudosPropChanges(prevProps: IModernEmployeeDirectoryProps): Promise<void> {
+    const kudosPropsChanged = prevProps.enableKudos !== this.props.enableKudos ||
+      prevProps.kudosListId !== this.props.kudosListId ||
+      prevProps.kudosRecipientColumn !== this.props.kudosRecipientColumn ||
+      prevProps.kudosAuthorColumn !== this.props.kudosAuthorColumn ||
+      prevProps.kudosMessageColumn !== this.props.kudosMessageColumn ||
+      prevProps.kudosBadgeTypeColumn !== this.props.kudosBadgeTypeColumn;
 
-          try {
-            const choices = await this.kudosService.getBadgeTypeChoices();
-            this.setState({ badgeChoices: choices });
-          } catch (error) {
-            console.error('[ModernEmployeeDirectory] Error loading badge choices:', error);
-          }
-        } else {
-          this.kudosService = null;
+    if (kudosPropsChanged) {
+      if (this.props.enableKudos && this.props.kudosListId) {
+        this.kudosService = new KudosService(this.props.context, {
+          listId: this.props.kudosListId,
+          recipientColumn: this.props.kudosRecipientColumn,
+          authorColumn: this.props.kudosAuthorColumn,
+          messageColumn: this.props.kudosMessageColumn,
+          badgeTypeColumn: this.props.kudosBadgeTypeColumn
+        });
+
+        try {
+          const choices = await this.kudosService.getBadgeTypeChoices();
+          this.setState({ badgeChoices: choices });
+        } catch (error) {
+          console.error('[ModernEmployeeDirectory] Error loading badge choices:', error);
         }
+      } else {
+        this.kudosService = null;
       }
+    }
+  }
 
-      if (prevProps.filterType !== this.props.filterType ||
-        prevProps.filterValue !== this.props.filterValue ||
-        prevProps.filterSecondaryValue !== this.props.filterSecondaryValue) {
-        console.log('[ModernEmployeeDirectory] Filter settings changed, reloading employees...');
-        await this._loadEmployees();
+  private async _handleFilterSettingChanges(prevProps: IModernEmployeeDirectoryProps): Promise<void> {
+    const filterSettingChanged = prevProps.filterType !== this.props.filterType ||
+      prevProps.filterValue !== this.props.filterValue ||
+      prevProps.filterSecondaryValue !== this.props.filterSecondaryValue;
+
+    if (filterSettingChanged) {
+      await this._loadEmployees();
+    }
+  }
+
+  private _handleAuditPropChanges(prevProps: IModernEmployeeDirectoryProps): void {
+    const auditPropsChanged = prevProps.enableAudit !== this.props.enableAudit ||
+      prevProps.auditListId !== this.props.auditListId ||
+      prevProps.auditActivityColumn !== this.props.auditActivityColumn ||
+      prevProps.auditActorColumn !== this.props.auditActorColumn ||
+      prevProps.auditTargetColumn !== this.props.auditTargetColumn ||
+      prevProps.auditDetailsColumn !== this.props.auditDetailsColumn;
+
+    if (auditPropsChanged) {
+      if (this.props.enableAudit && this.props.auditListId) {
+        this.auditService = new AuditService(this.props.context, {
+          listId: this.props.auditListId,
+          activityColumn: this.props.auditActivityColumn,
+          actorColumn: this.props.auditActorColumn,
+          targetColumn: this.props.auditTargetColumn,
+          detailsColumn: this.props.auditDetailsColumn,
+          onLog: (msg, type) => this._handleAuditLogMessage(msg, type)
+        });
+      } else {
+        this.auditService = null;
       }
-
-      if (prevProps.enableAudit !== this.props.enableAudit ||
-        prevProps.auditListId !== this.props.auditListId ||
-        prevProps.auditActivityColumn !== this.props.auditActivityColumn ||
-        prevProps.auditActorColumn !== this.props.auditActorColumn ||
-        prevProps.auditTargetColumn !== this.props.auditTargetColumn ||
-        prevProps.auditDetailsColumn !== this.props.auditDetailsColumn) {
-
-        console.log('[ModernEmployeeDirectory] Audit settings changed, re-initializing service...');
-        if (this.props.enableAudit && this.props.auditListId) {
-          console.log('[ModernEmployeeDirectory] 📡 Initializing AuditService with on-screen logging...');
-          this.auditService = new AuditService(this.props.context, {
-            listId: this.props.auditListId,
-            activityColumn: this.props.auditActivityColumn,
-            actorColumn: this.props.auditActorColumn,
-            targetColumn: this.props.auditTargetColumn,
-            detailsColumn: this.props.auditDetailsColumn,
-            onLog: (msg, type) => this._handleAuditLogMessage(msg, type)
-          });
-        } else {
-          this.auditService = null;
-        }
-      }
-    })();
+    }
   }
 
   private async _loadEmployees(): Promise<void> {
@@ -324,11 +361,11 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
           prevPageLinks: []
         });
 
-        void this._fetchEmployeePhotos(employees, token);
-        void this._fetchManagerInfo(employees, token);
+        this._fetchEmployeePhotos(employees, token).catch(err => { console.error(err); });
+        this._fetchManagerInfo(employees, token).catch(err => { console.error(err); });
       }
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error loading employees:', error);
+      console.error('[ModernEmployeeDirectory] Error in _loadEmployees:', error);
       this.setState({ employeesLoading: false });
     }
   }
@@ -363,10 +400,9 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         };
       });
 
-      void this._fetchEmployeePhotos(newEmployees, token);
-      void this._fetchManagerInfo(newEmployees, token);
-    } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error loading more employees:', error);
+      this._fetchEmployeePhotos(newEmployees, token).catch(err => { console.error(err); });
+      this._fetchManagerInfo(newEmployees, token).catch(err => { console.error(err); });
+    } catch {
       this.setState({ employeesLoading: false });
     }
   }
@@ -398,10 +434,9 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         lastFetchedLink: nextPageLink
       }));
 
-      void this._fetchEmployeePhotos(newEmployees, token);
-      void this._fetchManagerInfo(newEmployees, token);
-    } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error loading next page:', error);
+      this._fetchEmployeePhotos(newEmployees, token).catch(err => { console.error(err); });
+      this._fetchManagerInfo(newEmployees, token).catch(err => { console.error(err); });
+    } catch {
       this.setState({ employeesLoading: false });
     }
   }
@@ -444,10 +479,10 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         nextPageLink: response.nextLink
       });
 
-      void this._fetchEmployeePhotos(employees, token);
-      void this._fetchManagerInfo(employees, token);
+      this._fetchEmployeePhotos(employees, token).catch(err => { console.error(err); });
+      this._fetchManagerInfo(employees, token).catch(err => { console.error(err); });
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error loading previous page:', error);
+      console.error('[ModernEmployeeDirectory] Error in _handlePrevPage:', error);
       this.setState({ employeesLoading: false });
     }
   }
@@ -483,14 +518,15 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
             }));
           }
         } catch (error) {
-          console.warn('[ModernEmployeeDirectory] No photo for:', emp.displayName, error);
+          console.error('[ModernEmployeeDirectory] Error fetching photo for employee:', emp.id, error);
         }
       }));
     }
   }
 
   private async _fetchManagerInfo(employees: IEmployee[], token: number): Promise<void> {
-    if (!this.graphService) return;
+    const graphService = this.graphService;
+    if (!graphService) return;
 
     const batchSize = 10;
     for (let i = 0; i < employees.length; i += batchSize) {
@@ -499,7 +535,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
       await Promise.all(batch.map(async (emp) => {
         try {
-          const manager = await this.graphService!.getUserManager(emp.id);
+          const manager = await graphService.getUserManager(emp.id);
           if (manager && token === this._loadToken) {
             this.setState(prevState => {
               const managerExists = prevState.employees.some(e => e.id === manager.id);
@@ -524,7 +560,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
             });
           }
         } catch (error) {
-          console.warn('[ModernEmployeeDirectory] No manager for:', emp.displayName, error);
+          console.error('[ModernEmployeeDirectory] Error fetching manager for employee:', emp.id, error);
         }
       }));
     }
@@ -565,13 +601,12 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
   private async _loadHallOfFame(): Promise<IEmployee[]> {
     if (!this.graphService) return [];
 
-    console.log('[ModernEmployeeDirectory] Loading Hall of Fame (Star) employees...');
     let hofEmails: string[] = [];
     if (this.kudosService && this.props.minKudosCount > 0) {
       try {
         hofEmails = await this.kudosService.getHallOfFameCandidates(this.props.minKudosCount);
       } catch (error) {
-        console.error('[ModernEmployeeDirectory] Error getting HOF candidates:', error);
+        console.error('[ModernEmployeeDirectory] Error loading Hall of Fame candidates:', error);
       }
     }
 
@@ -591,7 +626,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         }))
         .filter(emp => emp.isFeatured || emp.isTopKudos);
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error loading HOF details:', error);
+      console.error('[ModernEmployeeDirectory] Error loading Hall of Fame details:', error);
       return [];
     }
   }
@@ -618,7 +653,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
           detailedEmployee.photoUrl = photoUrl;
         }
       } catch (error) {
-        console.error('[ModernEmployeeDirectory] Error fetching detailed profile:', error);
+        console.error('[ModernEmployeeDirectory] Error fetching detailed profile for:', employee.id, error);
       }
     }
 
@@ -627,7 +662,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       try {
         kudosCount = await this.kudosService.getKudosCount(employee.mail);
       } catch (error) {
-        console.error('[ModernEmployeeDirectory] Error fetching kudos count:', error);
+        console.error('[ModernEmployeeDirectory] Error fetching kudos count for employee:', employee.mail, error);
       }
     }
 
@@ -639,7 +674,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
     // Log Activity: Profile View
     if (this.auditService) {
-      void this.auditService.logActivity(
+      this.auditService.logActivity(
         'Profile View',
         employee.displayName || employee.mail || employee.id,
         JSON.stringify({
@@ -650,18 +685,18 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
           view: this.props.profileLayout
         }),
         this.state.currentUser.email
-      );
+      ).catch(err => { console.error(err); });
     }
   }
 
-  private readonly _handleAuditLog = (activity: string, target: string, details: any): void => {
+  private readonly _handleAuditLog = (activity: string, target: string, details: unknown): void => {
     if (this.auditService) {
-      void this.auditService.logActivity(
+      this.auditService.logActivity(
         activity,
         target,
         JSON.stringify(details),
         this.state.currentUser.email
-      );
+      ).catch(err => { console.error(err); });
     }
   }
 
@@ -671,7 +706,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       try {
         kudosCount = await this.kudosService.getKudosCount(employee.mail);
       } catch (error) {
-        console.error('[ModernEmployeeDirectory] Error fetching kudos count:', error);
+        console.error('[ModernEmployeeDirectory] Error fetching kudos count for employee:', employee.mail, error);
       }
     }
 
@@ -708,12 +743,12 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
     this._handleAuditLog('Panel Access', mode, { functionName: '_toggleSidePanel', panelMode: mode });
 
     if (mode === 'updateProfile') {
-      void this._loadFreshProfileData();
+      this._loadFreshProfileData().catch(err => { console.error(err); });
     }
 
     if (mode === 'kudos' && this.props.enableKudos) {
       const userId = this.state.selectedEmployee?.mail || this.state.currentUser.email;
-      void this._loadKudos(userId);
+      this._loadKudos(userId).catch(err => { console.error(err); });
     }
   }
 
@@ -744,7 +779,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         this.setState({ currentUserLoading: false });
       }
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error fetching fresh profile data:', error);
+      console.error('[ModernEmployeeDirectory] Error in _loadFreshProfileData:', error);
       this.setState({ currentUserLoading: false });
     }
   }
@@ -761,7 +796,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       const kudos = await this.kudosService.getKudosForUser(userId);
       this.setState({ kudos, kudosLoading: false });
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error loading kudos:', error);
+      console.error('[ModernEmployeeDirectory] Error in _loadKudos for user:', userId, error);
       this.setState({ kudosLoading: false });
     }
   }
@@ -781,11 +816,11 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       );
 
       if (success) {
-        await this._loadKudos(recipient.mail);
+        this._loadKudos(recipient.mail).catch(err => { console.error(err); });
 
         // Log Activity: Kudos Given
         if (this.auditService) {
-          void this.auditService.logActivity(
+          this.auditService.logActivity(
             'Kudos Given',
             recipient.displayName || recipient.mail,
             JSON.stringify({
@@ -796,19 +831,19 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
               message: message
             }),
             this.state.currentUser.email
-          );
+          ).catch(err => { console.error(err); });
         }
       }
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error giving kudos:', error);
+      console.error('[ModernEmployeeDirectory] Error in _handleGiveKudos:', error);
     }
   }
 
-  private readonly _handleUpdateProfile = async (updatedFields: any): Promise<boolean> => {
+  private readonly _handleUpdateProfile = async (updatedFields: unknown): Promise<boolean> => {
     if (!this.graphService) return false;
 
     try {
-      const result = await this.graphService.updateUserProfile(updatedFields);
+      const result = await this.graphService.updateUserProfile(updatedFields as IGraphUser);
       if (result.success) {
         const currentUser = await this.graphService.getCurrentUser();
         const detailedProfile = await this.graphService.getUserDetails('me');
@@ -830,27 +865,27 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
         // Log Activity: Profile Update
         if (this.auditService) {
-          void this.auditService.logActivity(
+          this.auditService.logActivity(
             'Profile Update',
             this.state.currentUser.name || this.state.currentUser.email,
             JSON.stringify({
               functionName: '_handleUpdateProfile',
-              updatedFields: Object.keys(updatedFields),
+              updatedFields: Object.keys(updatedFields as object),
               timestamp: new Date().toISOString()
             }),
             this.state.currentUser.email
-          );
+          ).catch(err => { console.error(err); });
         }
       }
       return result.success;
     } catch (error) {
-      console.error('[ModernEmployeeDirectory] Error updating profile:', error);
+      console.error('[ModernEmployeeDirectory] Error in _handleUpdateProfile:', error);
       return false;
     }
   }
 
   public render(): React.ReactElement<IModernEmployeeDirectoryProps> {
-    const { hasTeamsContext, mainHeadingSize, subHeadingSize, contentHeadingSize } = this.props;
+    const { hasTeamsContext, contentHeadingSize } = this.props;
     const { currentView, selectedEmployee, isSidePanelOpen } = this.state;
 
     const fontSizeStyles = {
@@ -884,15 +919,33 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
                   projects: this.state.currentUser.projects,
                   pastProjects: this.state.currentUser.pastProjects
                 };
+                this._handleSelectEmployee(myEmployee).catch(err => { console.error(err); });
                 this._handleAuditLog('Menu Interaction', 'My Profile', { functionName: 'TopBar.onOpenPanel', source: 'HamburgerMenu' });
-                void this._handleSelectEmployee(myEmployee);
               } else {
-                const activityMap: Record<string, string> = {
-                  'kudos': 'My Kudos',
-                  'updateProfile': 'Update Profile'
+                const myEmployee: IEmployee = {
+                  id: this.state.currentUser.id,
+                  displayName: this.state.currentUser.name,
+                  mail: this.state.currentUser.email,
+                  initials: this.state.currentUser.initials,
+                  photoUrl: this.state.currentUser.photoUrl,
+                  jobTitle: this.state.currentUser.jobTitle,
+                  aboutMe: this.state.currentUser.aboutMe,
+                  mobilePhone: this.state.currentUser.mobilePhone,
+                  officeLocation: this.state.currentUser.officeLocation,
+                  skills: this.state.currentUser.skills,
+                  interests: this.state.currentUser.interests,
+                  responsibilities: this.state.currentUser.responsibilities,
+                  projects: this.state.currentUser.projects,
+                  pastProjects: this.state.currentUser.pastProjects
                 };
-                this._handleAuditLog('Menu Interaction', activityMap[mode] || mode, { functionName: 'TopBar.onOpenPanel', source: 'HamburgerMenu' });
-                this._toggleSidePanel(mode);
+
+                if (mode === 'kudos') {
+                  this.setState({ selectedEmployee: myEmployee }, () => {
+                    this._toggleSidePanel('kudos');
+                  });
+                } else {
+                  this._toggleSidePanel(mode);
+                }
               }
             }}
             currentUserInitials={this.state.currentUser.initials}
@@ -972,22 +1025,35 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
         {/* Audit Debug Panel */}
         {this.props.enableAuditDebug && (
-          <div className={`${styles.debugPanel} ${!this.state.showDebugPanel ? styles.collapsed : ''}`}>
-            <div
-              className={styles.debugHeader}
-              onClick={() => this.setState({ showDebugPanel: !this.state.showDebugPanel })}
-            >
-              <div className={styles.headerLeft}>
+          <div className={`${styles.debugPanel} ${this.state.showDebugPanel ? '' : styles.collapsed}`}>
+            <div className={styles.debugHeader}>
+              <button
+                type="button"
+                className={styles.headerLeft}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  font: 'inherit',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexGrow: 1,
+                  textAlign: 'left'
+                }}
+                onClick={() => this.setState(prevState => ({ showDebugPanel: !prevState.showDebugPanel }))}
+                aria-expanded={this.state.showDebugPanel}
+              >
                 <h3>Audit Debug Logs ({this.state.auditLogs.length})</h3>
                 <span className={styles.toggleBtn}>{this.state.showDebugPanel ? '▼ Hide' : '▲ Show'}</span>
-              </div>
+              </button>
               {this.state.showDebugPanel && (
                 <button
+                  type="button"
                   className={styles.clearBtn}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    this.setState({ auditLogs: [] });
-                  }}
+                  onClick={() => this.setState({ auditLogs: [] })}
                 >
                   Clear Logs
                 </button>
@@ -998,7 +1064,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
                 <div className={styles.emptyLog}>No audit activities logged yet.</div>
               ) : (
                 this.state.auditLogs.map((log, i) => (
-                  <div key={i} className={`${styles.logEntry} ${styles[log.type]}`}>
+                  <div key={`${log.timestamp.getTime()}-${i}`} className={`${styles.logEntry} ${styles[log.type]}`}>
                     <span className={styles.timestamp}>[{log.timestamp.toLocaleTimeString()}]</span>
                     <span className={styles.msg}>{log.message}</span>
                   </div>

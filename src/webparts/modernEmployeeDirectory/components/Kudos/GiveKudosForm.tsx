@@ -31,16 +31,14 @@ export const GiveKudosForm: React.FC<IGiveKudosFormProps> = ({
         setSuccess(false);
 
         try {
-            console.log('[GiveKudosForm] Calling onSubmit with:', { message, selectedBadge });
             await onSubmit(message, selectedBadge);
-            console.log('[GiveKudosForm] onSubmit completed successfully');
             setSuccess(true);
             // Form will be closed by parent component after a brief delay
             setTimeout(() => {
                 onCancel(); // Close the form
             }, 1500);
         } catch (err) {
-            console.error('[GiveKudosForm] Failed to send kudos:', err);
+            console.error('[GiveKudosForm] Error giving kudos:', err);
             setError('Failed to send kudos. Please try again.');
             setSubmitting(false);
         }
