@@ -14,6 +14,7 @@ import { PropertyFieldListPicker, PropertyFieldListPickerOrderBy } from '@pnp/sp
 import { PropertyFieldColumnPicker, PropertyFieldColumnPickerOrderBy } from '@pnp/spfx-property-controls/lib/PropertyFieldColumnPicker';
 import { PropertyFieldMultiSelect } from '@pnp/spfx-property-controls/lib/PropertyFieldMultiSelect';
 import { PropertyFieldPeoplePicker, PrincipalType, IPropertyFieldGroupOrPerson } from '@pnp/spfx-property-controls/lib/PropertyFieldPeoplePicker';
+
 import '@pnp/sp/webs';
 import '@pnp/sp/lists';
 import '@pnp/sp/fields';
@@ -26,7 +27,6 @@ import { GraphService } from './services/GraphService';
 export interface IModernEmployeeDirectoryWebPartProps {
   description: string;
   profileLayout: 'scroll' | 'tab';
-  dataSource: 'mock' | 'graph';
   mainHeadingSize: number;
   subHeadingSize: number;
   contentHeadingSize: number;
@@ -49,6 +49,18 @@ export interface IModernEmployeeDirectoryWebPartProps {
   filterValue: string;
   filterSecondaryValue: string;
   homePageFilterFields: string[];
+  // Audit Logging
+  enableAudit: boolean;
+  auditListId: string;
+  auditActivityColumn: string;
+  auditActorColumn: string;
+  auditTargetColumn: string;
+  auditDetailsColumn: string;
+  enableAuditDebug: boolean;
+  containerMargin: number;
+  badgeCircleSize: number;
+  badgeFontSize: number;
+
 }
 
 export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPart<IModernEmployeeDirectoryWebPartProps> {
@@ -70,7 +82,6 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
         profileLayout: this.properties.profileLayout || 'scroll',
-        dataSource: this.properties.dataSource || 'mock',
         mainHeadingSize: this.properties.mainHeadingSize || 28,
         subHeadingSize: this.properties.subHeadingSize || 24,
         contentHeadingSize: this.properties.contentHeadingSize || 14,
@@ -91,7 +102,19 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
         filterType: this.properties.filterType || 'none',
         filterValue: this.properties.filterValue || '',
         filterSecondaryValue: this.properties.filterSecondaryValue || '',
-        homePageFilterFields: this.properties.homePageFilterFields || []
+        homePageFilterFields: this.properties.homePageFilterFields || [],
+        // Audit Logging
+        enableAudit: this.properties.enableAudit || false,
+        auditListId: this.properties.auditListId || '',
+        auditActivityColumn: this.properties.auditActivityColumn || 'Activity',
+        auditActorColumn: this.properties.auditActorColumn || 'Actor',
+        auditTargetColumn: this.properties.auditTargetColumn || 'Target',
+        auditDetailsColumn: this.properties.auditDetailsColumn || 'Details',
+        enableAuditDebug: this.properties.enableAuditDebug || false,
+        containerMargin: this.properties.containerMargin || 0,
+        badgeCircleSize: this.properties.badgeCircleSize || 32,
+        badgeFontSize: this.properties.badgeFontSize || 12,
+
       }
     );
 
@@ -175,6 +198,29 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
 
 
 
+  private async onAuditColumnChange(propertyPath: string, oldValue: any, newValue: any): Promise<void> {
+    console.log('[WebPart] Audit column changed:', { propertyPath, oldValue, newValue });
+
+    if (newValue && this.properties.auditListId) {
+      try {
+        const { spfi } = await import('@pnp/sp');
+        const { SPFx } = await import('@pnp/sp');
+        const sp = spfi().using(SPFx(this.context));
+
+        const field = await sp.web.lists.getById(this.properties.auditListId).fields.getById(newValue)();
+        const internalName = field.InternalName;
+
+        console.log('[WebPart] Resolved audit column GUID', newValue, 'to internal name:', internalName);
+        this.onPropertyPaneFieldChanged(propertyPath, oldValue, internalName);
+      } catch (error) {
+        console.error('[WebPart] Error resolving audit column name, saving GUID:', error);
+        this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
+      }
+    } else {
+      this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
+    }
+  }
+
   private _getEnvironmentMessage(): Promise<string> {
     if (this.context.sdks.microsoftTeams) { // running in Teams, office.com or Outlook
       return this.context.sdks.microsoftTeams.teamsJs.app.getContext()
@@ -216,6 +262,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
       this.domElement.style.setProperty('--bodyText', semanticColors.bodyText || null);
       this.domElement.style.setProperty('--link', semanticColors.link || null);
       this.domElement.style.setProperty('--linkHovered', semanticColors.linkHovered || null);
+      this.domElement.style.setProperty('--primary-color', currentTheme.palette?.themePrimary || '#0078d4');
     }
 
   }
@@ -233,27 +280,64 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
       pages: [
         {
           header: {
-            description: strings.PropertyPaneDescription
+            description: "General configuration for the directory display and basic behavior."
           },
           groups: [
             {
-              groupName: strings.BasicGroupName,
+              groupName: "Display Settings",
               groupFields: [
                 PropertyPaneTextField('description', {
                   label: strings.DescriptionFieldLabel
                 }),
+                PropertyPaneDropdown('containerMargin', {
+                  label: 'Container Margin (px)',
+                  options: [
+                    { key: 0, text: '0' },
+                    { key: 2, text: '2' },
+                    { key: 4, text: '4' },
+                    { key: 6, text: '6' },
+                    { key: 8, text: '8' },
+                    { key: 10, text: '10' },
+                    { key: 12, text: '12' },
+                    { key: 14, text: '14' },
+                    { key: 16, text: '16' },
+                    { key: 18, text: '18' },
+                    { key: 20, text: '20' },
+                    { key: 22, text: '22' },
+                    { key: 24, text: '24' },
+                    { key: 26, text: '26' },
+                    { key: 28, text: '28' },
+                    { key: 30, text: '30' }
+                  ],
+                  selectedKey: this.properties.containerMargin || 0
+                }),
+                PropertyPaneSlider('badgeCircleSize', {
+                  label: 'Badge Circle Size',
+                  min: 20,
+                  max: 60,
+                  step: 1,
+                  value: this.properties.badgeCircleSize || 32,
+                  showValue: true
+                }),
+                PropertyPaneSlider('badgeFontSize', {
+                  label: 'Badge Font Size',
+                  min: 8,
+                  max: 20,
+                  step: 1,
+                  value: this.properties.badgeFontSize || 12,
+                  showValue: true
+                }),
+
+              ]
+            },
+            {
+              groupName: "Layout & Theme",
+              groupFields: [
                 PropertyPaneDropdown('profileLayout', {
                   label: 'Profile Layout',
                   options: [
                     { key: 'scroll', text: 'Scrolling' },
                     { key: 'tab', text: 'Tabbed' }
-                  ]
-                }),
-                PropertyPaneDropdown('dataSource', {
-                  label: 'Data Source',
-                  options: [
-                    { key: 'mock', text: 'Mock Data (Development)' },
-                    { key: 'graph', text: 'Microsoft Graph API' }
                   ]
                 }),
                 PropertyPaneDropdown('orgChartLayout', {
@@ -263,43 +347,6 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                     { key: 'horizontal', text: 'Horizontal Tree' },
                     { key: 'compact', text: 'Compact List' }
                   ]
-                }),
-                PropertyFieldMultiSelect('updatableFields', {
-                  key: 'updatableFields',
-                  label: 'Updatable Profile Fields',
-                  options: [
-                    { key: 'jobTitle', text: 'Job Title' },
-                    { key: 'aboutMe', text: 'Bio (About Me)' },
-                    { key: 'mobilePhone', text: 'Mobile Phone' },
-                    { key: 'officeLocation', text: 'Office Location' },
-                    { key: 'skills', text: 'Skills' },
-                    { key: 'interests', text: 'Interests' },
-                    { key: 'pastProjects', text: 'Past Projects' }
-                  ],
-                  selectedKeys: this.properties.updatableFields
-                }),
-                PropertyPaneToggle('enablePagination', {
-                  label: 'Enable Pagination',
-                  onText: 'Enabled',
-                  offText: 'Disabled'
-                }),
-                PropertyPaneSlider('pageSize', {
-                  label: 'Users per page',
-                  min: 5,
-                  max: 50,
-                  step: 1,
-                  value: this.properties.pageSize || 10,
-                  showValue: true,
-                  disabled: !this.properties.enablePagination
-                }),
-                PropertyPaneDropdown('paginationType', {
-                  label: 'Pagination style',
-                  options: [
-                    { key: 'loadMore', text: 'Load More' },
-                    { key: 'prevNext', text: 'Previous / Next' }
-                  ],
-                  selectedKey: this.properties.paginationType || 'loadMore',
-                  disabled: !this.properties.enablePagination
                 })
               ]
             },
@@ -329,6 +376,87 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                   step: 1,
                   value: this.properties.contentHeadingSize || 14,
                   showValue: true
+                })
+              ]
+            },
+            {
+              groupName: "Navigation & Pagination",
+              groupFields: [
+                PropertyPaneToggle('enablePagination', {
+                  label: 'Enable Pagination',
+                  onText: 'Enabled',
+                  offText: 'Disabled'
+                }),
+                PropertyPaneSlider('pageSize', {
+                  label: 'Users per page',
+                  min: 5,
+                  max: 50,
+                  step: 1,
+                  value: this.properties.pageSize || 10,
+                  showValue: true,
+                  disabled: !this.properties.enablePagination
+                }),
+                PropertyPaneDropdown('paginationType', {
+                  label: 'Pagination style',
+                  options: [
+                    { key: 'loadMore', text: 'Load More' },
+                    { key: 'prevNext', text: 'Previous / Next' }
+                  ],
+                  selectedKey: this.properties.paginationType || 'loadMore',
+                  disabled: !this.properties.enablePagination
+                })
+              ]
+            }
+          ]
+        },
+        {
+          header: {
+            description: "Configure core directory features including filters, recognition, and the Hall of Fame."
+          },
+          groups: [
+            {
+              groupName: 'Organization Filters',
+              groupFields: [
+                PropertyPaneDropdown('filterType', {
+                  label: 'Filter Type',
+                  options: [
+                    { key: 'none', text: 'None' },
+                    { key: 'department', text: 'By Department' },
+                    { key: 'location', text: 'By Office Location' },
+                    { key: 'domain', text: 'By Email Domain' },
+                    { key: 'extension', text: 'By Extension Attribute' }
+                  ],
+                  selectedKey: this.properties.filterType || 'none'
+                }),
+                ...(this.properties.filterType && this.properties.filterType !== 'none' ? [
+                  (this.properties.filterType === 'department' || this.properties.filterType === 'location') ?
+                    PropertyPaneDropdown('filterValue', {
+                      label: this._getFilterValueLabel(),
+                      options: (this.properties.filterType === 'department' ? this._departments : this._locations)
+                        .map(v => ({ key: v, text: v })),
+                      disabled: this._loadingFilters
+                    }) :
+                    PropertyPaneTextField('filterValue', {
+                      label: this._getFilterValueLabel()
+                    })
+                ] : []),
+                ...(this.properties.filterType === 'extension' ? [
+                  PropertyPaneTextField('filterSecondaryValue', {
+                    label: 'Attribute Value'
+                  })
+                ] : []),
+                PropertyFieldMultiSelect('homePageFilterFields', {
+                  key: 'homePageFilterFields',
+                  label: 'Home Page Dropdown Filters',
+                  options: [
+                    { key: 'department', text: 'Department' },
+                    { key: 'officeLocation', text: 'Office Location' },
+                    { key: 'jobTitle', text: 'Job Title' },
+                    { key: 'city', text: 'City' },
+                    { key: 'state', text: 'State/Province' },
+                    { key: 'country', text: 'Country' }
+                  ],
+                  selectedKeys: this.properties.homePageFilterFields || []
                 })
               ]
             },
@@ -420,7 +548,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
               ]
             },
             {
-              groupName: 'Hall of Fame Settings',
+              groupName: 'Hall of Fame',
               groupFields: [
                 PropertyFieldPeoplePicker('featuredPeople', {
                   label: 'Manually Featured People',
@@ -435,51 +563,114 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                   key: 'peopleFieldId'
                 })
               ]
+            }
+          ]
+        },
+        {
+          header: {
+            description: "Advanced management settings including self-service profile updates and audit logging."
+          },
+          groups: [
+            {
+              groupName: "Self-Service Settings",
+              groupFields: [
+                PropertyFieldMultiSelect('updatableFields', {
+                  key: 'updatableFields',
+                  label: 'Updatable Profile Fields',
+                  options: [
+                    { key: 'jobTitle', text: 'Job Title' },
+                    { key: 'aboutMe', text: 'Bio (About Me)' },
+                    { key: 'mobilePhone', text: 'Mobile Phone' },
+                    { key: 'officeLocation', text: 'Office Location' },
+                    { key: 'skills', text: 'Skills' },
+                    { key: 'interests', text: 'Interests' },
+                    { key: 'pastProjects', text: 'Past Projects' }
+                  ],
+                  selectedKeys: this.properties.updatableFields
+                })
+              ]
             },
             {
-              groupName: 'Organization Filters',
+              groupName: 'Audit & Insights',
               groupFields: [
-                PropertyPaneDropdown('filterType', {
-                  label: 'Filter Type',
-                  options: [
-                    { key: 'none', text: 'None' },
-                    { key: 'department', text: 'By Department' },
-                    { key: 'location', text: 'By Office Location' },
-                    { key: 'domain', text: 'By Email Domain' },
-                    { key: 'extension', text: 'By Extension Attribute' }
-                  ],
-                  selectedKey: this.properties.filterType || 'none'
+                PropertyPaneToggle('enableAudit', {
+                  label: 'Enable Audit Logging',
+                  onText: 'Enabled',
+                  offText: 'Disabled'
                 }),
-                ...(this.properties.filterType && this.properties.filterType !== 'none' ? [
-                  (this.properties.filterType === 'department' || this.properties.filterType === 'location') ?
-                    PropertyPaneDropdown('filterValue', {
-                      label: this._getFilterValueLabel(),
-                      options: (this.properties.filterType === 'department' ? this._departments : this._locations)
-                        .map(v => ({ key: v, text: v })),
-                      disabled: this._loadingFilters
-                    }) :
-                    PropertyPaneTextField('filterValue', {
-                      label: this._getFilterValueLabel()
+                ...(this.properties.enableAudit ? [
+                  PropertyFieldListPicker('auditListId', {
+                    label: 'Select Audit List',
+                    selectedList: this.properties.auditListId,
+                    includeHidden: false,
+                    orderBy: PropertyFieldListPickerOrderBy.Title,
+                    disabled: false,
+                    onPropertyChange: this.onPropertyPaneFieldChanged.bind(this),
+                    properties: this.properties,
+                    context: this.context as any,
+                    deferredValidationTime: 0,
+                    key: 'auditListPickerFieldId'
+                  }),
+                  ...(this.properties.auditListId ? [
+                    PropertyFieldColumnPicker('auditActivityColumn', {
+                      label: 'Activity Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.auditActivityColumn,
+                      listId: this.properties.auditListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onAuditColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'auditActivityColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyFieldColumnPicker('auditActorColumn', {
+                      label: 'Actor (Person) Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.auditActorColumn,
+                      listId: this.properties.auditListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onAuditColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'auditActorColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyFieldColumnPicker('auditTargetColumn', {
+                      label: 'Target (Text/Person) Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.auditTargetColumn,
+                      listId: this.properties.auditListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onAuditColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'auditTargetColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyFieldColumnPicker('auditDetailsColumn', {
+                      label: 'Details (Multi-line) Column',
+                      context: this.context as any,
+                      selectedColumn: this.properties.auditDetailsColumn,
+                      listId: this.properties.auditListId,
+                      disabled: false,
+                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+                      onPropertyChange: (p: string, o: any, n: any) => { void this.onAuditColumnChange(p, o, n); },
+                      properties: this.properties,
+                      deferredValidationTime: 0,
+                      key: 'auditDetailsColumnPickerFieldId',
+                      displayHiddenColumns: false
+                    }),
+                    PropertyPaneToggle('enableAuditDebug', {
+                      label: 'Show Audit Debug Panel',
+                      onText: 'Show',
+                      offText: 'Hide'
                     })
-                ] : []),
-                ...(this.properties.filterType === 'extension' ? [
-                  PropertyPaneTextField('filterSecondaryValue', {
-                    label: 'Attribute Value'
-                  })
-                ] : []),
-                PropertyFieldMultiSelect('homePageFilterFields', {
-                  key: 'homePageFilterFields',
-                  label: 'Home Page Dropdown Filters',
-                  options: [
-                    { key: 'department', text: 'Department' },
-                    { key: 'officeLocation', text: 'Office Location' },
-                    { key: 'jobTitle', text: 'Job Title' },
-                    { key: 'city', text: 'City' },
-                    { key: 'state', text: 'State/Province' },
-                    { key: 'country', text: 'Country' }
-                  ],
-                  selectedKeys: this.properties.homePageFilterFields || []
-                })
+                  ] : [])
+                ] : [])
               ]
             }
           ]

@@ -1,21 +1,26 @@
 .orgChartContainer {
-    padding: 20px;
+    padding: 30px;
     overflow-x: auto;
-    background: var(--bg-white);
-    border-radius: 8px;
+    background: transparent;
+    border-radius: 12px;
     position: relative;
 }
 
 .orgNode {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--bg-white);
-    border: 2px solid var(--border-light);
-    border-radius: 8px;
-    min-width: 200px;
-    transition: all 0.2s ease;
+    gap: 16px;
+    padding: 16px 20px;
+
+    // Glassmorphism
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    min-width: 240px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     position: relative;
     z-index: 2;
@@ -27,31 +32,49 @@
     width: auto;
     margin: 0;
     box-sizing: border-box;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 
     &:hover {
+        background: rgba(255, 255, 255, 0.9);
         border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        transform: translateY(-4px);
     }
 
     &.current {
-        border-color: var(--primary);
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        background: rgba(255, 255, 255, 0.85);
+        border: 2px solid var(--primary);
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.25);
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
+            z-index: -1;
+            opacity: 0.15;
+            filter: blur(8px);
+        }
+
+        .orgName {
+            color: var(--primary);
+        }
     }
 }
 
 .orgAvatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px; // Squircle feel
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-weight: 600;
-    font-size: 18px;
+    font-weight: 700;
+    font-size: 20px;
     flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .orgInfo {
@@ -60,50 +83,55 @@
 }
 
 .orgName {
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: 700;
+    font-size: 15px;
     color: var(--text-primary);
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: -0.2px;
 }
 
 .orgTitle {
     font-size: 12px;
     color: var(--text-medium);
     margin: 0;
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 .orgRelation {
     font-size: 10px;
     color: var(--primary);
-    margin-top: 4px;
-    font-weight: 600;
+    margin-top: 5px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
+    opacity: 0.9;
 }
 
 .noData {
-    padding: 40px;
+    padding: 60px;
     text-align: center;
     color: var(--text-medium);
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 500;
 }
 
 // Grid-based Horizontal Layout
 .horizontalGrid {
     display: grid;
-    grid-template-columns: auto 40px auto 40px auto;
+    grid-template-columns: auto 60px auto 60px auto;
     grid-template-rows: auto auto;
     align-items: center;
     gap: 0;
-    padding: 20px;
+    padding: 30px;
     min-width: max-content;
 }
 
 .gridHeader {
-    padding-bottom: 12px;
+    padding-bottom: 20px;
     text-align: center;
 }
 
@@ -121,7 +149,7 @@
 .reportsStack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     align-items: center;
 }
 
@@ -130,24 +158,37 @@
 }
 
 .hConnector {
-    width: 40px;
+    width: 60px;
     height: 2px;
-    background: #e0e0e0;
+    background: linear-gradient(to right, #e0e0e0, #bdbdbd, #e0e0e0);
     flex-shrink: 0;
     position: relative;
     z-index: 1;
+    opacity: 0.6;
 
     &::after {
         content: '';
         position: absolute;
-        right: 0;
+        right: -2px;
         top: 50%;
         transform: translateY(-50%);
-        width: 0;
-        height: 0;
-        border-left: 6px solid #e0e0e0;
-        border-top: 4px solid transparent;
-        border-bottom: 4px solid transparent;
+        width: 8px;
+        height: 8px;
+        background: #bdbdbd;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: -2px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 50%;
     }
 }
 
@@ -156,19 +197,20 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: 20px;
+    padding: 24px;
 }
 
 .compactRow {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: var(--bg-white);
-    border: 1px solid var(--border-light);
-    border-radius: 12px;
+    gap: 16px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     appearance: none;
     text-align: left;
     font-family: inherit;
@@ -179,27 +221,30 @@
     box-sizing: border-box;
 
     &:hover {
-        background: var(--bg-hover);
-        transform: translateX(4px);
+        background: rgba(255, 255, 255, 0.85);
+        transform: translateX(6px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     &.current {
         border: 2px solid var(--primary);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
     }
 }
 
 .compactAvatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     background: var(--primary-gradient);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
 
 .compactInfo {
@@ -209,37 +254,43 @@
 }
 
 .compactName {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.1px;
 }
 
 .compactTitle {
     font-size: 12px;
     color: var(--text-medium);
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 .compactBadge {
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
     color: var(--primary);
-    margin-top: 2px;
+    margin-top: 3px;
+    letter-spacing: 0.5px;
 }
 
 .compactReports {
-    margin-left: 24px;
-    padding-left: 16px;
-    border-left: 2px solid var(--border-light);
+    margin-left: 28px;
+    padding-left: 18px;
+    border-left: 2.5px solid rgba(0, 0, 0, 0.06);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .compactLabel {
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
     color: var(--text-lighter);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    opacity: 0.7;
 }

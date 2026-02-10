@@ -6,9 +6,9 @@ import { SidePanel } from './Shared/SidePanel';
 import { DirectoryHome, IEmployee } from './Home/DirectoryHome';
 import { ProfileScrolling } from './Profile/ProfileScrolling';
 import { ProfileTabbed } from './Profile/ProfileTabbed';
-import { MockDataService } from '../services/MockDataService';
 import { KudosService } from '../services/KudosService';
 import { GraphService, IGraphUser } from '../services/GraphService';
+import { AuditService } from '../services/AuditService';
 import { IKudos } from '../models/IKudos';
 
 export type SidePanelMode = 'profile' | 'kudos' | 'updateProfile';
@@ -41,11 +41,14 @@ export interface IModernEmployeeDirectoryState {
   selectedEmployeeKudosCount: number;
   badgeChoices: string[];
   currentUserLoading: boolean;
+  topKudosEmails: string[];
   nextPageLink: string | null;
   prevPageLinks: string[];
   lastFetchedLink: string | null;
   selectedLetter: string | null;
   dynamicFilterData: { [key: string]: string[] };
+  auditLogs: Array<{ message: string, type: 'info' | 'success' | 'error' | 'warning', timestamp: Date }>;
+  showDebugPanel: boolean;
 }
 
 const MOCK_CURRENT_USER = {
@@ -56,7 +59,8 @@ const MOCK_CURRENT_USER = {
 
 export default class ModernEmployeeDirectory extends React.Component<IModernEmployeeDirectoryProps, IModernEmployeeDirectoryState> {
   private kudosService: KudosService | null = null;
-  private readonly graphService: GraphService | null = null;
+  private graphService: GraphService | null = null;
+  private auditService: AuditService | null = null;
   private _loadToken: number = 0;
 
   constructor(props: IModernEmployeeDirectoryProps) {
@@ -74,11 +78,14 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       selectedEmployeeKudosCount: 0,
       badgeChoices: [],
       currentUserLoading: false,
+      topKudosEmails: [],
       nextPageLink: null,
       prevPageLinks: [],
       lastFetchedLink: null,
       selectedLetter: 'STAR',
-      dynamicFilterData: {}
+      dynamicFilterData: {},
+      auditLogs: [],
+      showDebugPanel: false
     };
 
     if (props.context) {
@@ -97,6 +104,23 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         }
       );
     }
+
+    if (props.enableAudit && props.auditListId) {
+      this.auditService = new AuditService(props.context, {
+        listId: props.auditListId,
+        activityColumn: props.auditActivityColumn,
+        actorColumn: props.auditActorColumn,
+        targetColumn: props.auditTargetColumn,
+        detailsColumn: props.auditDetailsColumn,
+        onLog: (msg, type) => this._handleAuditLogMessage(msg, type)
+      });
+    }
+  }
+
+  private _handleAuditLogMessage(message: string, type: 'info' | 'success' | 'error' | 'warning'): void {
+    this.setState(prevState => ({
+      auditLogs: [{ message, type, timestamp: new Date() }, ...prevState.auditLogs.slice(0, 49)]
+    }));
   }
 
   private readonly _fetchDynamicFilterValues = async (): Promise<void> => {
@@ -120,9 +144,20 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
     this.setState({ dynamicFilterData });
   }
 
+  private async _fetchTopKudosEmails(): Promise<void> {
+    if (this.kudosService && this.props.minKudosCount > 0) {
+      try {
+        const topKudosEmails = await this.kudosService.getHallOfFameCandidates(this.props.minKudosCount);
+        this.setState({ topKudosEmails });
+      } catch (error) {
+        console.error('[ModernEmployeeDirectory] Error fetching top kudos emails:', error);
+      }
+    }
+  }
+
   public componentDidMount(): void {
     void (async (): Promise<void> => {
-      this._injectWorkbenchStyles();
+      void this._fetchTopKudosEmails();
 
       try {
         const currentUser = this.props.context.pageContext.user;
@@ -184,11 +219,6 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
   public componentDidUpdate(prevProps: IModernEmployeeDirectoryProps): void {
     void (async (): Promise<void> => {
-      if (prevProps.dataSource !== this.props.dataSource) {
-        console.log('[ModernEmployeeDirectory] Data source changed, reloading employees...');
-        await this._loadEmployees();
-      }
-
       if (JSON.stringify(prevProps.homePageFilterFields) !== JSON.stringify(this.props.homePageFilterFields)) {
         console.log('[ModernEmployeeDirectory] Filter fields changed, fetching new values...');
         await this._fetchDynamicFilterValues();
@@ -235,16 +265,38 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
         console.log('[ModernEmployeeDirectory] Filter settings changed, reloading employees...');
         await this._loadEmployees();
       }
+
+      if (prevProps.enableAudit !== this.props.enableAudit ||
+        prevProps.auditListId !== this.props.auditListId ||
+        prevProps.auditActivityColumn !== this.props.auditActivityColumn ||
+        prevProps.auditActorColumn !== this.props.auditActorColumn ||
+        prevProps.auditTargetColumn !== this.props.auditTargetColumn ||
+        prevProps.auditDetailsColumn !== this.props.auditDetailsColumn) {
+
+        console.log('[ModernEmployeeDirectory] Audit settings changed, re-initializing service...');
+        if (this.props.enableAudit && this.props.auditListId) {
+          console.log('[ModernEmployeeDirectory] 📡 Initializing AuditService with on-screen logging...');
+          this.auditService = new AuditService(this.props.context, {
+            listId: this.props.auditListId,
+            activityColumn: this.props.auditActivityColumn,
+            actorColumn: this.props.auditActorColumn,
+            targetColumn: this.props.auditTargetColumn,
+            detailsColumn: this.props.auditDetailsColumn,
+            onLog: (msg, type) => this._handleAuditLogMessage(msg, type)
+          });
+        } else {
+          this.auditService = null;
+        }
+      }
     })();
   }
 
   private async _loadEmployees(): Promise<void> {
-    const { dataSource } = this.props;
     const token = ++this._loadToken;
     this.setState({ employeesLoading: true });
 
     try {
-      if (dataSource === 'graph' && this.graphService) {
+      if (this.graphService) {
         let employees: IEmployee[] = [];
         let nextLink: string | null = null;
 
@@ -274,20 +326,17 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
         void this._fetchEmployeePhotos(employees, token);
         void this._fetchManagerInfo(employees, token);
-      } else {
-        const employees = MockDataService.getEmployees();
-        this.setState({ employees, employeesLoading: false });
       }
     } catch (error) {
       console.error('[ModernEmployeeDirectory] Error loading employees:', error);
-      const employees = MockDataService.getEmployees();
-      this.setState({ employees, employeesLoading: false });
+      this.setState({ employeesLoading: false });
     }
   }
 
   private readonly _handleLoadMore = async (): Promise<void> => {
     const { nextPageLink } = this.state;
     if (!nextPageLink || !this.graphService) return;
+    this._handleAuditLog('Pagination', 'Load More', { functionName: '_handleLoadMore' });
 
     const token = ++this._loadToken;
     this.setState({ employeesLoading: true });
@@ -404,6 +453,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
   }
 
   private readonly _handleLetterChange = async (letter: string | null): Promise<void> => {
+    this._handleAuditLog('Navigation', `Alphabet Filter: ${letter || 'All'}`, { functionName: '_handleLetterChange', letter });
     this.setState({
       selectedLetter: letter,
       prevPageLinks: [],
@@ -462,6 +512,8 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
                   id: manager.id,
                   displayName: manager.displayName,
                   initials: this._getInitials(manager.displayName),
+                  jobTitle: manager.jobTitle,
+                  department: manager.department,
                   isOnline: false,
                   _isOrgChartNode: true
                 };
@@ -495,7 +547,9 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       mobilePhone: user.mobilePhone,
       businessPhones: user.businessPhones,
       initials: this._getInitials(user.displayName),
-      isOnline: false
+      isOnline: false,
+      isFeatured: (this.props.featuredEmails || []).some((email: string) => email.toLowerCase() === user.mail?.toLowerCase()),
+      isTopKudos: this.state.topKudosEmails.some((email: string) => email.toLowerCase() === user.mail?.toLowerCase())
     }));
   }
 
@@ -542,26 +596,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
     }
   }
 
-  private _injectWorkbenchStyles(): void {
-    if (document.getElementById('dev-workbench-fullwidth')) return;
 
-    const style = document.createElement('style');
-    style.id = 'dev-workbench-fullwidth';
-    style.textContent = `
-      .p_ZwSiC_hHQBj, .CanvasComponent, .LCS, .CanvasZone,
-      div[data-automation-id="CanvasZone"], .CanvasSection {
-        max-width: 100% !important;
-        width: 100% !important;
-      }
-      .CanvasComponent.LCS .CanvasZone {
-        max-width: 100% !important;
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 auto !important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
 
   private readonly _handleSelectEmployee = async (employee: IEmployee): Promise<void> => {
     let detailedEmployee = employee;
@@ -601,6 +636,33 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       currentView: this.props.profileLayout === 'scroll' ? 'PROFILE_SCROLL' : 'PROFILE_TAB',
       selectedEmployeeKudosCount: kudosCount
     });
+
+    // Log Activity: Profile View
+    if (this.auditService) {
+      void this.auditService.logActivity(
+        'Profile View',
+        employee.displayName || employee.mail || employee.id,
+        JSON.stringify({
+          functionName: '_handleSelectEmployee',
+          employeeId: employee.id,
+          employeeName: employee.displayName,
+          employeeMail: employee.mail,
+          view: this.props.profileLayout
+        }),
+        this.state.currentUser.email
+      );
+    }
+  }
+
+  private readonly _handleAuditLog = (activity: string, target: string, details: any): void => {
+    if (this.auditService) {
+      void this.auditService.logActivity(
+        activity,
+        target,
+        JSON.stringify(details),
+        this.state.currentUser.email
+      );
+    }
   }
 
   private readonly _handleKudosForEmployee = async (employee: IEmployee): Promise<void> => {
@@ -626,6 +688,8 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       currentView: 'HOME',
       selectedEmployee: null
     });
+
+    // Activity logging removed per user request
   }
 
   private readonly _toggleSidePanel = (mode: SidePanelMode = 'profile'): void => {
@@ -640,6 +704,8 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       isSidePanelOpen: true,
       sidePanelMode: mode
     });
+
+    this._handleAuditLog('Panel Access', mode, { functionName: '_toggleSidePanel', panelMode: mode });
 
     if (mode === 'updateProfile') {
       void this._loadFreshProfileData();
@@ -716,6 +782,22 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
 
       if (success) {
         await this._loadKudos(recipient.mail);
+
+        // Log Activity: Kudos Given
+        if (this.auditService) {
+          void this.auditService.logActivity(
+            'Kudos Given',
+            recipient.displayName || recipient.mail,
+            JSON.stringify({
+              functionName: '_handleGiveKudos',
+              recipientMail: recipient.mail,
+              recipientName: recipient.displayName,
+              badgeType: badgeType,
+              message: message
+            }),
+            this.state.currentUser.email
+          );
+        }
       }
     } catch (error) {
       console.error('[ModernEmployeeDirectory] Error giving kudos:', error);
@@ -745,6 +827,20 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
             }
           }));
         }
+
+        // Log Activity: Profile Update
+        if (this.auditService) {
+          void this.auditService.logActivity(
+            'Profile Update',
+            this.state.currentUser.name || this.state.currentUser.email,
+            JSON.stringify({
+              functionName: '_handleUpdateProfile',
+              updatedFields: Object.keys(updatedFields),
+              timestamp: new Date().toISOString()
+            }),
+            this.state.currentUser.email
+          );
+        }
       }
       return result.success;
     } catch (error) {
@@ -758,13 +854,16 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
     const { currentView, selectedEmployee, isSidePanelOpen } = this.state;
 
     const fontSizeStyles = {
-      '--main-heading-size': `${mainHeadingSize}px`,
-      '--sub-heading-size': `${subHeadingSize}px`,
       '--content-heading-size': `${contentHeadingSize}px`
     } as React.CSSProperties;
 
+    const containerStyle: React.CSSProperties = {
+      ...fontSizeStyles,
+      margin: `${this.props.containerMargin}px`
+    };
+
     return (
-      <section className={`${styles.modernEmployeeDirectory} ${hasTeamsContext ? styles.teams : ''}`} style={fontSizeStyles} >
+      <section className={`${styles.modernEmployeeDirectory} ${hasTeamsContext ? styles.teams : ''}`} style={containerStyle} >
         {currentView === 'HOME' && (
           <TopBar
             onOpenPanel={(mode: SidePanelMode) => {
@@ -785,8 +884,14 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
                   projects: this.state.currentUser.projects,
                   pastProjects: this.state.currentUser.pastProjects
                 };
-                this._handleSelectEmployee(myEmployee);
+                this._handleAuditLog('Menu Interaction', 'My Profile', { functionName: 'TopBar.onOpenPanel', source: 'HamburgerMenu' });
+                void this._handleSelectEmployee(myEmployee);
               } else {
+                const activityMap: Record<string, string> = {
+                  'kudos': 'My Kudos',
+                  'updateProfile': 'Update Profile'
+                };
+                this._handleAuditLog('Menu Interaction', activityMap[mode] || mode, { functionName: 'TopBar.onOpenPanel', source: 'HamburgerMenu' });
                 this._toggleSidePanel(mode);
               }
             }}
@@ -831,6 +936,10 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
               onLetterChange={this._handleLetterChange}
               homePageFilterFields={this.props.homePageFilterFields}
               dynamicFilterData={this.state.dynamicFilterData}
+              onAuditLog={this._handleAuditLog}
+              badgeCircleSize={this.props.badgeCircleSize}
+              badgeFontSize={this.props.badgeFontSize}
+
             />
           )}
 
@@ -843,6 +952,7 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
               onKudosClick={() => this._toggleSidePanel('kudos')}
               onEmployeeSelect={this._handleSelectEmployee}
               orgChartLayout={this.props.orgChartLayout}
+              onAuditLog={this._handleAuditLog}
             />
           )}
 
@@ -855,9 +965,48 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
               onKudosClick={() => this._toggleSidePanel('kudos')}
               onEmployeeSelect={this._handleSelectEmployee}
               orgChartLayout={this.props.orgChartLayout}
+              onAuditLog={this._handleAuditLog}
             />
           )}
         </div>
+
+        {/* Audit Debug Panel */}
+        {this.props.enableAuditDebug && (
+          <div className={`${styles.debugPanel} ${!this.state.showDebugPanel ? styles.collapsed : ''}`}>
+            <div
+              className={styles.debugHeader}
+              onClick={() => this.setState({ showDebugPanel: !this.state.showDebugPanel })}
+            >
+              <div className={styles.headerLeft}>
+                <h3>Audit Debug Logs ({this.state.auditLogs.length})</h3>
+                <span className={styles.toggleBtn}>{this.state.showDebugPanel ? '▼ Hide' : '▲ Show'}</span>
+              </div>
+              {this.state.showDebugPanel && (
+                <button
+                  className={styles.clearBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    this.setState({ auditLogs: [] });
+                  }}
+                >
+                  Clear Logs
+                </button>
+              )}
+            </div>
+            <div className={styles.logContainer}>
+              {this.state.auditLogs.length === 0 ? (
+                <div className={styles.emptyLog}>No audit activities logged yet.</div>
+              ) : (
+                this.state.auditLogs.map((log, i) => (
+                  <div key={i} className={`${styles.logEntry} ${styles[log.type]}`}>
+                    <span className={styles.timestamp}>[{log.timestamp.toLocaleTimeString()}]</span>
+                    <span className={styles.msg}>{log.message}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </section >
     );
   }

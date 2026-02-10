@@ -18,6 +18,10 @@ export interface IDirectoryHomeProps {
     onLetterChange?: (letter: string | null) => void;
     homePageFilterFields?: string[];
     dynamicFilterData?: { [key: string]: string[] };
+    onAuditLog?: (activity: string, target: string, details: any) => void;
+    badgeCircleSize?: number;
+    badgeFontSize?: number;
+
 }
 
 export interface IEmployee {
@@ -72,25 +76,49 @@ const EmployeeCard: React.FC<{
     onSelectEmployee: (emp: IEmployee) => void;
     onKudosForEmployee: (emp: IEmployee) => void;
     enableKudos?: boolean;
-}> = ({ emp, viewMode, onSelectEmployee, onKudosForEmployee, enableKudos }) => {
+    onAuditLog?: (activity: string, target: string, details: any) => void;
+    badgeCircleSize?: number;
+    badgeFontSize?: number;
+}> = ({ emp, viewMode, onSelectEmployee, onKudosForEmployee, enableKudos, onAuditLog, badgeCircleSize, badgeFontSize }) => {
     return (
         <div className={`${styles.employeeCard} ${viewMode === 'list' ? styles.listView : ''}`}>
             <div className={styles.badgeContainer}>
                 {emp.isFeatured && (
-                    <span className={styles.vipBadge} title="Featured VIP">
-                        <span className={styles.badgeIcon}>💎</span> VIP
-                    </span>
+                    <div
+                        className={styles.circularBadge}
+                        title="Featured VIP"
+                        style={{
+                            width: `${badgeCircleSize}px`,
+                            height: `${badgeCircleSize}px`,
+                            fontSize: `${badgeFontSize}px`,
+                            background: 'var(--primary-color, #0078d4)'
+                        }}
+                    >
+                        💎
+                    </div>
                 )}
                 {emp.isTopKudos && (
-                    <span className={styles.kudosBadge} title="Kudos Star recipient">
-                        <span className={styles.badgeIcon}>⭐</span> Star
-                    </span>
+                    <div
+                        className={styles.circularBadge}
+                        title="Kudos Star recipient"
+                        style={{
+                            width: `${badgeCircleSize}px`,
+                            height: `${badgeCircleSize}px`,
+                            fontSize: `${badgeFontSize}px`,
+                            background: 'var(--primary-color, #0078d4)'
+                        }}
+                    >
+                        ⭐
+                    </div>
                 )}
             </div>
             <div className={styles.cardHeader}>
                 <button
                     className={styles.avatar}
-                    onClick={() => onSelectEmployee(emp)}
+                    onClick={() => {
+                        if (onAuditLog) onAuditLog('Card Interaction', emp.displayName || emp.mail || '', { source: 'CardClick', action: 'ViewProfile' });
+                        onSelectEmployee(emp);
+                    }}
                     title="View Profile"
                 >
                     {emp.photoUrl ? (
@@ -102,7 +130,13 @@ const EmployeeCard: React.FC<{
                 </button>
                 <div className={styles.employeeInfo}>
                     <h3 className={styles.employeeName}>
-                        <button onClick={() => onSelectEmployee(emp)} title="View Profile">
+                        <button
+                            onClick={() => {
+                                if (onAuditLog) onAuditLog('Card Interaction', emp.displayName || emp.mail || '', { source: 'CardClick', action: 'ViewProfile' });
+                                onSelectEmployee(emp);
+                            }}
+                            title="View Profile"
+                        >
                             {emp.displayName}
                         </button>
                     </h3>
@@ -124,15 +158,44 @@ const EmployeeCard: React.FC<{
             </div>
 
             <div className={styles.cardActions}>
-                <button className={styles.iconBtn} title="Email">✉️</button>
-                <button className={styles.iconBtn} title="Chat">💬</button>
-                <button className={styles.iconBtn} title="Call">📞</button>
+                <button
+                    className={styles.iconBtn}
+                    title="Email"
+                    onClick={() => {
+                        if (onAuditLog) onAuditLog('Card Contact: Email', emp.displayName || emp.mail || '', { source: 'CardIcon', mail: emp.mail });
+                        if (emp.mail) globalThis.location.href = `mailto:${emp.mail}`;
+                    }}
+                >
+                    ✉️
+                </button>
+                <button
+                    className={styles.iconBtn}
+                    title="Chat"
+                    onClick={() => {
+                        if (onAuditLog) onAuditLog('Card Contact: Teams', emp.displayName || emp.mail || '', { source: 'CardIcon', mail: emp.mail });
+                        if (emp.mail) globalThis.open(`https://teams.microsoft.com/l/chat/0/0?users=${emp.mail}`, '_blank');
+                    }}
+                >
+                    💬
+                </button>
+                <button
+                    className={styles.iconBtn}
+                    title="Call"
+                    onClick={() => {
+                        const phone = emp.businessPhones?.[0] || emp.mobilePhone;
+                        if (onAuditLog) onAuditLog('Card Contact: Call', emp.displayName || emp.mail || '', { source: 'CardIcon', phone });
+                        if (phone) globalThis.location.href = `tel:${phone}`;
+                    }}
+                >
+                    📞
+                </button>
                 {enableKudos && (
                     <button
                         className={styles.iconBtn}
                         title="Give Kudos"
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (onAuditLog) onAuditLog('Kudos Interaction', emp.displayName || emp.mail || '', { source: 'CardIcon', action: 'OpenKudosPanel' });
                             onKudosForEmployee(emp);
                         }}
                     >
@@ -184,17 +247,68 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
         onLoadMore, hasMore, loading,
         paginationType, onNextPage, onPrevPage, hasPrev,
         selectedLetter, onLetterChange,
-        homePageFilterFields, dynamicFilterData
+        homePageFilterFields, dynamicFilterData, onAuditLog,
+        badgeCircleSize, badgeFontSize
     } = props;
     const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [activeFilters, setActiveFilters] = React.useState<{ [key: string]: string }>({});
+    const searchLogTimeoutRef = React.useRef<any>(null);
 
     const _handleFilterChange = (field: string, value: string): void => {
+        const newValue = value === 'ALL' ? '' : value;
         setActiveFilters(prev => ({
             ...prev,
-            [field]: value === 'ALL' ? '' : value
+            [field]: newValue
         }));
+
+        if (onAuditLog) {
+            onAuditLog(
+                'Home Filter Change',
+                field,
+                {
+                    field: field,
+                    value: newValue || 'ALL',
+                    functionName: '_handleFilterChange'
+                }
+            );
+        }
+    };
+
+    const _handleSearchChange = (value: string): void => {
+        setSearchTerm(value);
+
+        if (searchLogTimeoutRef.current) {
+            clearTimeout(searchLogTimeoutRef.current);
+        }
+
+        if (value.trim().length >= 3 && onAuditLog) {
+            searchLogTimeoutRef.current = setTimeout(() => {
+                onAuditLog!(
+                    'Home Search',
+                    value,
+                    {
+                        searchTerm: value,
+                        functionName: '_handleSearchChange'
+                    }
+                );
+            }, 1000);
+        }
+    };
+
+    const _handleViewToggle = (mode: 'grid' | 'list'): void => {
+        if (viewMode === mode) return;
+        setViewMode(mode);
+        if (onAuditLog) {
+            onAuditLog(
+                'Home View Toggle',
+                mode,
+                {
+                    mode: mode,
+                    functionName: '_handleViewToggle'
+                }
+            );
+        }
     };
 
     const filteredEmployees = employees.filter(emp => {
@@ -230,7 +344,7 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
                             className={styles.searchInput}
                             placeholder="Search employees by name, title, or department..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => _handleSearchChange(e.target.value)}
                         />
                         {homePageFilterFields?.map(field => (
                             <select
@@ -239,7 +353,7 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
                                 value={activeFilters[field] || 'ALL'}
                                 onChange={(e) => _handleFilterChange(field, e.target.value)}
                             >
-                                <option value="ALL">All {field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1').trim()}</option>
+                                <option value="ALL">All {field.charAt(0).toUpperCase() + field.slice(1).replaceAll(/([A-Z])/g, ' $1').trim()}</option>
                                 {dynamicFilterData?.[field]?.map(val => (
                                     <option key={val} value={val}>{val}</option>
                                 ))}
@@ -248,14 +362,14 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
                         <div className={styles.viewToggle}>
                             <button
                                 className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                                onClick={() => setViewMode('grid')}
+                                onClick={() => _handleViewToggle('grid')}
                                 title="Grid View"
                             >
                                 ⊞
                             </button>
                             <button
                                 className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
-                                onClick={() => setViewMode('list')}
+                                onClick={() => _handleViewToggle('list')}
                                 title="List View"
                             >
                                 ☰
@@ -291,6 +405,9 @@ export const DirectoryHome: React.FunctionComponent<IDirectoryHomeProps> = (prop
                                 onSelectEmployee={onSelectEmployee}
                                 onKudosForEmployee={onKudosForEmployee}
                                 enableKudos={enableKudos}
+                                onAuditLog={onAuditLog}
+                                badgeCircleSize={badgeCircleSize}
+                                badgeFontSize={badgeFontSize}
                             />
                         ))}
                     </div>

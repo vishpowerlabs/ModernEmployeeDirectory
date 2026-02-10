@@ -7,7 +7,6 @@ export interface IModernEmployeeDirectoryProps {
   hasTeamsContext: boolean;
   userDisplayName: string;
   profileLayout: 'scroll' | 'tab';
-  dataSource: 'mock' | 'graph';
   mainHeadingSize: number;
   subHeadingSize: number;
   contentHeadingSize: number;
@@ -33,5 +32,17 @@ export interface IModernEmployeeDirectoryProps {
   filterSecondaryValue?: string;
   homePageFilterFields: string[];
   dynamicFilterData?: { [key: string]: string[] };
+  // Audit Logging
+  enableAudit: boolean;
+  auditListId: string;
+  auditActivityColumn: string;
+  auditActorColumn: string;
+  auditTargetColumn: string;
+  auditDetailsColumn: string;
+  enableAuditDebug: boolean;
+  containerMargin: number;
+  badgeCircleSize: number;
+  badgeFontSize: number;
+
 }
 

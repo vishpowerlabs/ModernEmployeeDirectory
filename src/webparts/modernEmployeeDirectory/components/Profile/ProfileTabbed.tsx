@@ -11,11 +11,46 @@ export interface IProfileTabbedProps {
     kudosCount?: number;
     onEmployeeSelect?: (employee: IEmployee) => void;  // Callback when clicking employee in org chart
     orgChartLayout?: 'vertical' | 'horizontal' | 'compact';
+    onAuditLog?: (activity: string, target: string, details: any) => void;
 }
 
 export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (props) => {
-    const { employee, employees, onBack, kudosCount = 0, onEmployeeSelect, orgChartLayout } = props;
+    const { employee, employees, onBack, kudosCount = 0, onEmployeeSelect, orgChartLayout, onAuditLog } = props;
     const [activeTab, setActiveTab] = React.useState('overview');
+
+    const _handleTabChange = (tab: string): void => {
+        if (activeTab === tab) return;
+        setActiveTab(tab);
+        // Tab change auditing removed per user request
+    };
+
+    const _handleContactClick = (type: 'Email' | 'Teams' | 'Call'): void => {
+        if (onAuditLog) {
+            onAuditLog(
+                `Profile Contact: ${type}`,
+                employee.displayName || employee.mail || employee.id,
+                {
+                    contactType: type,
+                    targetMail: employee.mail,
+                    functionName: '_handleContactClick'
+                }
+            );
+        }
+
+        switch (type) {
+            case 'Email':
+                if (employee.mail) globalThis.location.href = `mailto:${employee.mail}`;
+                break;
+            case 'Teams':
+                if (employee.mail) globalThis.open(`https://teams.microsoft.com/l/chat/0/0?users=${employee.mail}`, '_blank');
+                break;
+            case 'Call': {
+                const phone = employee.businessPhones?.[0] || employee.mobilePhone;
+                if (phone) globalThis.location.href = `tel:${phone}`;
+                break;
+            }
+        }
+    };
 
     return (
         <div className={styles.profileTabbed}>
@@ -50,10 +85,16 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                         </div>
                     </div>
                     <div className={styles.quickActions}>
-                        <button className={`${styles.actionBtn} ${styles.primary}`}>✉️ Email</button>
-                        <button className={styles.actionBtn}>💬 Teams</button>
-                        <button className={styles.actionBtn}>📞 Call</button>
-                        <button className={styles.btnKudos} onClick={props.onKudosClick}>
+                        <button className={`${styles.actionBtn} ${styles.primary}`} onClick={() => _handleContactClick('Email')}>✉️ Email</button>
+                        <button className={styles.actionBtn} onClick={() => _handleContactClick('Teams')}>💬 Teams</button>
+                        <button className={styles.actionBtn} onClick={() => _handleContactClick('Call')}>📞 Call</button>
+                        <button
+                            className={styles.btnKudos}
+                            onClick={() => {
+                                if (onAuditLog) onAuditLog('Kudos Interaction', employee.displayName || employee.mail || '', { source: 'ProfileButton', action: 'OpenKudosPanel' });
+                                if (props.onKudosClick) props.onKudosClick();
+                            }}
+                        >
                             ⭐ Kudos {kudosCount > 0 && <span className={styles.kudosCount}>{kudosCount}</span>}
                         </button>
                     </div>
@@ -63,20 +104,20 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                 <div className={styles.tabNavigation}>
                     <button
                         className={`${styles.tabBtn} ${activeTab === 'overview' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('overview')}
+                        onClick={() => _handleTabChange('overview')}
                     >
                         📋 Overview
                     </button>
 
                     <button
                         className={`${styles.tabBtn} ${activeTab === 'details' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('details')}
+                        onClick={() => _handleTabChange('details')}
                     >
                         📝 More Details
                     </button>
                     <button
                         className={`${styles.tabBtn} ${activeTab === 'organization' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('organization')}
+                        onClick={() => _handleTabChange('organization')}
                     >
                         🏢 Organization
                     </button>
@@ -197,6 +238,10 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                                 key={colleague.id}
                                                 className={styles.colleagueAvatar}
                                                 title={colleague.displayName}
+                                                onClick={() => {
+                                                    if (onAuditLog) onAuditLog('Profile Interaction', colleague.displayName || colleague.mail || '', { source: 'ColleagueCircle', action: 'ViewProfile' });
+                                                    if (onEmployeeSelect) onEmployeeSelect(colleague);
+                                                }}
                                             >
                                                 {colleague.initials}
                                             </div>
@@ -217,7 +262,10 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                 employees={employees}
                                 currentEmployeeId={employee.id}
                                 currentEmployee={employee}
-                                onEmployeeClick={onEmployeeSelect}
+                                onEmployeeClick={(emp) => {
+                                    if (onAuditLog) onAuditLog('Org Chart Interaction', emp.displayName || emp.mail || '', { source: 'OrgChartNode', action: 'ViewProfile' });
+                                    if (onEmployeeSelect) onEmployeeSelect(emp);
+                                }}
                                 layout={orgChartLayout}
                             />
                         </div>

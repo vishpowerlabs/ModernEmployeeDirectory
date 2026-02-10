@@ -32,6 +32,8 @@ export interface IGraphPresence {
 export interface IGraphManager {
     id: string;
     displayName: string;
+    jobTitle?: string;
+    department?: string;
 }
 
 export interface IGraphSkill {
@@ -313,7 +315,7 @@ export class GraphService {
             const client = await this.getGraphClient();
             const manager = await client
                 .api(`/users/${userId}/manager`)
-                .select('id,displayName')
+                .select('id,displayName,jobTitle,department')
                 .get();
 
             return manager;
