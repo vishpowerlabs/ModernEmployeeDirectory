@@ -76,18 +76,20 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
     const element: React.ReactElement<IModernEmployeeDirectoryProps> = React.createElement(
       ModernEmployeeDirectory,
       {
-        description: this.properties.description,
+        ...this.properties,
         isDarkTheme: this._isDarkTheme,
         environmentMessage: this._environmentMessage,
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
+        context: this.context,
+        featuredEmails: this.properties.featuredPeople ? this.properties.featuredPeople.map(p => p.email).filter(e => !!e) as string[] : [],
+
+        // Defaults for values that might be missing in properties
         profileLayout: this.properties.profileLayout || 'scroll',
         mainHeadingSize: this.properties.mainHeadingSize || 28,
         subHeadingSize: this.properties.subHeadingSize || 24,
         contentHeadingSize: this.properties.contentHeadingSize || 14,
-        context: this.context,
         enableKudos: this.properties.enableKudos || false,
-        kudosListId: this.properties.kudosListId || '',
         kudosRecipientColumn: this.properties.kudosRecipientColumn || 'Recipient',
         kudosAuthorColumn: this.properties.kudosAuthorColumn || 'Author',
         kudosMessageColumn: this.properties.kudosMessageColumn || 'Message',
@@ -97,24 +99,20 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
         enablePagination: this.properties.enablePagination || false,
         pageSize: this.properties.pageSize || 10,
         paginationType: this.properties.paginationType || 'loadMore',
-        featuredEmails: this.properties.featuredPeople ? this.properties.featuredPeople.map(p => p.email).filter(e => !!e) as string[] : [],
         minKudosCount: this.properties.minKudosCount || 0,
         filterType: this.properties.filterType || 'none',
         filterValue: this.properties.filterValue || '',
         filterSecondaryValue: this.properties.filterSecondaryValue || '',
         homePageFilterFields: this.properties.homePageFilterFields || [],
-        // Audit Logging
         enableAudit: this.properties.enableAudit || false,
-        auditListId: this.properties.auditListId || '',
         auditActivityColumn: this.properties.auditActivityColumn || 'Activity',
         auditActorColumn: this.properties.auditActorColumn || 'Actor',
         auditTargetColumn: this.properties.auditTargetColumn || 'Target',
         auditDetailsColumn: this.properties.auditDetailsColumn || 'Details',
         enableAuditDebug: this.properties.enableAuditDebug || false,
-        containerMargin: this.properties.containerMargin || 0,
+        containerMargin: Number(this.properties.containerMargin) || 0,
         badgeCircleSize: this.properties.badgeCircleSize || 32,
         badgeFontSize: this.properties.badgeFontSize || 12,
-
       }
     );
 
@@ -183,25 +181,13 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
     }
   }
 
-  private async onKudosColumnChange(propertyPath: string, oldValue: unknown, newValue: unknown): Promise<void> {
+  private async _onColumnChange(propertyPath: string, oldValue: unknown, newValue: unknown, listId: string): Promise<void> {
     if (!newValue) return;
 
     // If a column GUID is selected, resolve it to internal name
-    if (this.properties.kudosListId) {
-      const internalName = await this._resolveColumnInternalName(this.properties.kudosListId, newValue as string);
+    if (listId) {
+      const internalName = await this._resolveColumnInternalName(listId, newValue as string);
       // Save internal name if resolved, otherwise keep original value (GUID)
-      this.onPropertyPaneFieldChanged(propertyPath, oldValue, internalName || (newValue as string));
-    } else {
-      this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
-    }
-    this.context.propertyPane.refresh();
-  }
-
-  private async onAuditColumnChange(propertyPath: string, oldValue: unknown, newValue: unknown): Promise<void> {
-    if (!newValue) return;
-
-    if (this.properties.auditListId) {
-      const internalName = await this._resolveColumnInternalName(this.properties.auditListId, newValue as string);
       this.onPropertyPaneFieldChanged(propertyPath, oldValue, internalName || (newValue as string));
     } else {
       this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
@@ -487,7 +473,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       listId: this.properties.kudosListId,
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onKudosColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'kudosRecipientColumnPickerFieldId',
@@ -500,7 +486,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       listId: this.properties.kudosListId,
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onKudosColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'kudosAuthorColumnPickerFieldId',
@@ -513,7 +499,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       listId: this.properties.kudosListId,
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onKudosColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'kudosMessageColumnPickerFieldId',
@@ -526,7 +512,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       listId: this.properties.kudosListId,
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onKudosColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'kudosBadgeTypeColumnPickerFieldId',
@@ -610,7 +596,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onAuditColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'auditActivityColumnPickerFieldId',
@@ -625,7 +611,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onAuditColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'auditActorColumnPickerFieldId',
@@ -640,7 +626,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onAuditColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'auditTargetColumnPickerFieldId',
@@ -655,7 +641,7 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                       disabled: false,
                       orderBy: PropertyFieldColumnPickerOrderBy.Title,
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this.onAuditColumnChange(p, o, n).catch(err => { console.error(err); }); },
+                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
                       properties: this.properties,
                       deferredValidationTime: 0,
                       key: 'auditDetailsColumnPickerFieldId',

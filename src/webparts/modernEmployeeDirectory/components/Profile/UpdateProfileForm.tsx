@@ -139,183 +139,118 @@ export const UpdateProfileForm: React.FC<IUpdateProfileFormProps> = ({
     const renderField = (field: string): React.ReactElement | null => {
         const isRecentlyUpdated = updatedStatus[field];
 
-        switch (field) {
-            case 'jobTitle':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Job Title {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <input
-                            type="text"
-                            className={styles.input}
-                            value={formData.jobTitle}
-                            onChange={(e) => handleInputChange('jobTitle', e.target.value)}
-                            disabled={submitting}
-                        />
-                    </div>
-                );
-            case 'aboutMe':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Bio {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <textarea
-                            className={styles.textarea}
-                            value={formData.aboutMe}
-                            onChange={(e) => handleInputChange('aboutMe', e.target.value)}
-                            disabled={submitting}
-                        />
-                    </div>
-                );
-            case 'mobilePhone':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Mobile Phone {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <input
-                            type="text"
-                            className={styles.input}
-                            value={formData.mobilePhone}
-                            onChange={(e) => handleInputChange('mobilePhone', e.target.value)}
-                            disabled={submitting}
-                        />
-                    </div>
-                );
-            case 'officeLocation':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Office Location {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <input
-                            type="text"
-                            className={styles.input}
-                            value={formData.officeLocation}
-                            onChange={(e) => handleInputChange('officeLocation', e.target.value)}
-                            disabled={submitting}
-                        />
-                    </div>
-                );
-            case 'skills':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Skills {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <div className={styles.tagPicker}>
-                            {formData.skills.map((tag: string) => (
-                                <div key={tag} className={styles.tagItem}>
-                                    <span className={styles.tagText}>{tag}</span>
-                                    <button
-                                        type="button"
-                                        className={styles.removeTag}
-                                        onClick={() => handleRemoveTag('skills', tag)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
-                                                handleRemoveTag('skills', tag);
-                                            }
-                                        }}
-                                        aria-label={`Remove ${tag}`}
-                                        disabled={submitting}
-                                    >×</button>
-                                </div>
-                            ))}
-                            <input
-                                type="text"
-                                className={styles.tagInput}
-                                placeholder="Add skill..."
-                                value={skillInput}
-                                onChange={(e) => setSkillInput(e.target.value)}
-                                onKeyDown={(e) => handleTagKeyPress(e, 'skills', skillInput)}
-                                onBlur={() => handleAddTag('skills', skillInput)}
-                                disabled={submitting}
-                            />
-                        </div>
-                    </div>
-                );
-            case 'interests':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Interests {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <div className={styles.tagPicker}>
-                            {formData.interests.map((tag: string) => (
-                                <div key={tag} className={styles.tagItem}>
-                                    <span className={styles.tagText}>{tag}</span>
-                                    <button
-                                        type="button"
-                                        className={styles.removeTag}
-                                        onClick={() => handleRemoveTag('interests', tag)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
-                                                handleRemoveTag('interests', tag);
-                                            }
-                                        }}
-                                        aria-label={`Remove ${tag}`}
-                                        disabled={submitting}
-                                    >×</button>
-                                </div>
-                            ))}
-                            <input
-                                type="text"
-                                className={styles.tagInput}
-                                placeholder="Add interest..."
-                                value={interestInput}
-                                onKeyDown={(e) => handleTagKeyPress(e, 'interests', interestInput)}
-                                onBlur={() => handleAddTag('interests', interestInput)}
-                                disabled={submitting}
-                            />
-                        </div>
-                    </div>
-                );
+        const labels: Record<string, string> = {
+            jobTitle: 'Job Title',
+            aboutMe: 'Bio',
+            mobilePhone: 'Mobile Phone',
+            officeLocation: 'Office Location',
+            skills: 'Skills',
+            interests: 'Interests',
+            pastProjects: 'Past Projects'
+        };
 
-            case 'pastProjects':
-                return (
-                    <div className={styles.formField} key={field}>
-                        <label className={styles.label}>
-                            Past Projects {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
-                        </label>
-                        <div className={styles.tagPicker}>
-                            {formData.pastProjects.map((tag: string) => (
-                                <div key={tag} className={styles.tagItem}>
-                                    <span className={styles.tagText}>{tag}</span>
-                                    <button
-                                        type="button"
-                                        className={styles.removeTag}
-                                        onClick={() => handleRemoveTag('pastProjects', tag)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
-                                                handleRemoveTag('pastProjects', tag);
-                                            }
-                                        }}
-                                        aria-label={`Remove ${tag}`}
-                                        disabled={submitting}
-                                    >×</button>
-                                </div>
-                            ))}
-                            <input
-                                type="text"
-                                className={styles.tagInput}
-                                placeholder="Add past project..."
-                                value={pastProjectInput}
-                                onChange={(e) => setPastProjectInput(e.target.value)}
-                                onKeyDown={(e) => handleTagKeyPress(e, 'pastProjects', pastProjectInput)}
-                                onBlur={() => handleAddTag('pastProjects', pastProjectInput)}
-                                disabled={submitting}
-                            />
-                        </div>
-                    </div>
-                );
-            default:
-                return null;
+        const labelText = labels[field] || field;
+
+        const label = (
+            <label className={styles.label}>
+                {labelText} {isRecentlyUpdated && <span className={styles.recentUpdate}>(Recently Updated)</span>}
+            </label>
+        );
+
+        if (['jobTitle', 'mobilePhone', 'officeLocation'].includes(field)) {
+            return (
+                <div className={styles.formField} key={field}>
+                    {label}
+                    <input
+                        type="text"
+                        className={styles.input}
+                        value={formData[field]}
+                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        disabled={submitting}
+                    />
+                </div>
+            );
         }
+
+        if (field === 'aboutMe') {
+            return (
+                <div className={styles.formField} key={field}>
+                    {label}
+                    <textarea
+                        className={styles.textarea}
+                        value={formData.aboutMe}
+                        onChange={(e) => handleInputChange('aboutMe', e.target.value)}
+                        disabled={submitting}
+                    />
+                </div>
+            );
+        }
+
+        if (['skills', 'interests', 'pastProjects'].includes(field)) {
+            const tagField = field as TagField;
+
+            const fieldMap: Record<TagField, {
+                input: string,
+                setter: (val: string) => void,
+                placeholder: string
+            }> = {
+                skills: {
+                    input: skillInput,
+                    setter: setSkillInput,
+                    placeholder: 'Add skill...'
+                },
+                interests: {
+                    input: interestInput,
+                    setter: setInterestInput,
+                    placeholder: 'Add interest...'
+                },
+                pastProjects: {
+                    input: pastProjectInput,
+                    setter: setPastProjectInput,
+                    placeholder: 'Add past project...'
+                }
+            };
+
+            const { input: inputVal, setter: setInput, placeholder } = fieldMap[tagField];
+
+            return (
+                <div className={styles.formField} key={field}>
+                    {label}
+                    <div className={styles.tagPicker}>
+                        {formData[tagField].map((tag: string) => (
+                            <div key={tag} className={styles.tagItem}>
+                                <span className={styles.tagText}>{tag}</span>
+                                <button
+                                    type="button"
+                                    className={styles.removeTag}
+                                    onClick={() => handleRemoveTag(tagField, tag)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleRemoveTag(tagField, tag);
+                                        }
+                                    }}
+                                    aria-label={`Remove ${tag}`}
+                                    disabled={submitting}
+                                >×</button>
+                            </div>
+                        ))}
+                        <input
+                            type="text"
+                            className={styles.tagInput}
+                            placeholder={placeholder}
+                            value={inputVal}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => handleTagKeyPress(e, tagField, inputVal)}
+                            onBlur={() => handleAddTag(tagField, inputVal)}
+                            disabled={submitting}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        return null;
     };
 
     return (

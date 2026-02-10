@@ -36,3 +36,9 @@ obj
 
 # Styles Generated Code
 *.scss.ts
+
+# User Exclusions
+Mockup/
+Reference/
+*.md
+!README.md

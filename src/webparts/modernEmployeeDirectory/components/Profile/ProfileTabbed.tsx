@@ -2,6 +2,7 @@ import * as React from 'react';
 import styles from './ProfileTabbed.module.scss';
 import { IEmployee } from '../Home/DirectoryHome';
 import { OrgChart } from '../Shared/OrgChart';
+import { ContactItem, ActionButton, ProfileSection } from './ProfileCommon';
 
 export interface IProfileTabbedProps {
     employee: IEmployee;
@@ -21,7 +22,6 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
     const _handleTabChange = (tab: string): void => {
         if (activeTab === tab) return;
         setActiveTab(tab);
-        // Tab change auditing removed per user request
     };
 
     const _handleContactClick = (type: 'Email' | 'Teams' | 'Call'): void => {
@@ -71,32 +71,39 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                 <div className={styles.profileHeader}>
                     <div className={styles.profileLeft}>
                         <div className={styles.avatarLarge}>
-                            {employee.initials}
+                            {employee.photoUrl ? (
+                                <img src={employee.photoUrl} alt={employee.displayName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                                employee.initials
+                            )}
                             {employee.isOnline && <div className={styles.onlineStatus}></div>}
                         </div>
                         <div className={styles.profileInfo}>
                             <h1>{employee.displayName}</h1>
                             <p className={styles.profileTitle}>{employee.jobTitle || 'N/A'}</p>
                             <div className={styles.profileLocation}>
-                                <span className={styles.headerContactItem}>✉️ {employee.mail || employee.userPrincipalName || 'N/A'}</span>
-                                <span className={styles.headerContactItem}>📞 {employee.businessPhones?.[0] || employee.mobilePhone || 'N/A'}</span>
-                                <span className={styles.headerContactItem}>📍 {employee.city && employee.state ? `${employee.city}, ${employee.state}` : employee.officeLocation || 'N/A'}</span>
+                                <ContactItem icon="✉️" text={employee.mail || employee.userPrincipalName || 'N/A'} className={styles.headerContactItem} />
+                                <ContactItem icon="📞" text={employee.businessPhones?.[0] || employee.mobilePhone || 'N/A'} className={styles.headerContactItem} />
+                                <ContactItem icon="📍" text={employee.city && employee.state ? `${employee.city}, ${employee.state}` : employee.officeLocation || 'N/A'} className={styles.headerContactItem} />
                             </div>
                         </div>
                     </div>
                     <div className={styles.quickActions}>
-                        <button className={`${styles.actionBtn} ${styles.primary}`} onClick={() => _handleContactClick('Email')}>✉️ Email</button>
-                        <button className={styles.actionBtn} onClick={() => _handleContactClick('Teams')}>💬 Teams</button>
-                        <button className={styles.actionBtn} onClick={() => _handleContactClick('Call')}>📞 Call</button>
-                        <button
-                            className={styles.btnKudos}
+                        <ActionButton icon="✉️" label="Email" onClick={() => _handleContactClick('Email')} className={`${styles.actionBtn} ${styles.primary}`} />
+                        <ActionButton icon="💬" label="Teams" onClick={() => _handleContactClick('Teams')} className={styles.actionBtn} />
+                        <ActionButton icon="📞" label="Call" onClick={() => _handleContactClick('Call')} className={styles.actionBtn} />
+                        <ActionButton
+                            icon="⭐"
+                            label="Give Kudos"
                             onClick={() => {
                                 if (onAuditLog) onAuditLog('Kudos Interaction', employee.displayName || employee.mail || '', { source: 'ProfileButton', action: 'OpenKudosPanel' });
                                 if (props.onKudosClick) props.onKudosClick();
                             }}
-                        >
-                            ⭐ Kudos {kudosCount > 0 && <span className={styles.kudosCount}>{kudosCount}</span>}
-                        </button>
+                            className={styles.btnKudos}
+                            variant="kudos"
+                            kudosCount={kudosCount}
+                            kudosCountClassName={styles.kudosCount}
+                        />
                     </div>
                 </div>
 
@@ -126,22 +133,29 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                 {/* Tab Content */}
                 {activeTab === 'overview' && (
                     <div className={`${styles.tabContent} ${styles.active}`}>
-                        <div className={styles.contentCard}>
-                            <div className={styles.cardHeader}>
-                                <div className={styles.cardIcon}>👤</div>
-                                <h2 className={styles.cardTitle}>Professional Bio</h2>
-                            </div>
+                        <ProfileSection
+                            icon="👤"
+                            title="Professional Bio"
+                            cardClassName={styles.contentCard}
+                            headerClassName={styles.cardHeader}
+                            iconClassName={styles.cardIcon}
+                            titleClassName={styles.cardTitle}
+                        >
                             {employee.aboutMe ? (
                                 <p className={styles.bioText}>{employee.aboutMe}</p>
                             ) : (
                                 <p className={styles.bioText} style={{ color: '#605e5c', fontStyle: 'italic' }}>No bio available</p>
                             )}
-                        </div>
-                        <div className={styles.contentCard}>
-                            <div className={styles.cardHeader}>
-                                <div className={styles.cardIcon}>🎯</div>
-                                <h2 className={styles.cardTitle}>Quick Summary</h2>
-                            </div>
+                        </ProfileSection>
+
+                        <ProfileSection
+                            icon="🎯"
+                            title="Quick Summary"
+                            cardClassName={styles.contentCard}
+                            headerClassName={styles.cardHeader}
+                            iconClassName={styles.cardIcon}
+                            titleClassName={styles.cardTitle}
+                        >
                             <div className={styles.contactGrid}>
                                 <div className={styles.contactItem}>
                                     <div className={styles.contactLabel}>Current Role</div>
@@ -152,20 +166,21 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                     <div className={styles.contactValue}>{employee.department}</div>
                                 </div>
                             </div>
-                        </div>
+                        </ProfileSection>
                     </div>
                 )}
-
-
 
                 {activeTab === 'details' && (
                     <div className={`${styles.tabContent} ${styles.active}`}>
                         <div className={styles.detailsGrid} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                            <div className={styles.contentCard}>
-                                <div className={styles.cardHeader}>
-                                    <div className={styles.cardIcon}>💡</div>
-                                    <h2 className={styles.cardTitle}>Core Skills</h2>
-                                </div>
+                            <ProfileSection
+                                icon="💡"
+                                title="Core Skills"
+                                cardClassName={styles.contentCard}
+                                headerClassName={styles.cardHeader}
+                                iconClassName={styles.cardIcon}
+                                titleClassName={styles.cardTitle}
+                            >
                                 <div className={styles.skillsGrid} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {employee.skills && employee.skills.length > 0 ? (
                                         employee.skills.map((skill, index) => (
@@ -177,13 +192,16 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                         <p style={{ color: '#605e5c', fontStyle: 'italic' }}>No skills listed</p>
                                     )}
                                 </div>
-                            </div>
+                            </ProfileSection>
 
-                            <div className={styles.contentCard}>
-                                <div className={styles.cardHeader}>
-                                    <div className={styles.cardIcon}>🎯</div>
-                                    <h2 className={styles.cardTitle}>Interests</h2>
-                                </div>
+                            <ProfileSection
+                                icon="🎯"
+                                title="Interests"
+                                cardClassName={styles.contentCard}
+                                headerClassName={styles.cardHeader}
+                                iconClassName={styles.cardIcon}
+                                titleClassName={styles.cardTitle}
+                            >
                                 <div className={styles.skillsGrid} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {employee.interests && employee.interests.length > 0 ? (
                                         employee.interests.map((interest, index) => (
@@ -195,14 +213,18 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                         <p style={{ color: '#605e5c', fontStyle: 'italic' }}>No interests listed</p>
                                     )}
                                 </div>
-                            </div>
+                            </ProfileSection>
                         </div>
 
-                        <div className={styles.contentCard} style={{ marginTop: '24px' }}>
-                            <div className={styles.cardHeader}>
-                                <div className={styles.cardIcon}>📁</div>
-                                <h2 className={styles.cardTitle}>Recent Projects</h2>
-                            </div>
+                        <ProfileSection
+                            icon="📁"
+                            title="Recent Projects"
+                            cardClassName={styles.contentCard}
+                            headerClassName={styles.cardHeader}
+                            iconClassName={styles.cardIcon}
+                            titleClassName={styles.cardTitle}
+                            style={{ marginTop: '24px' }}
+                        >
                             <div className={styles.projectsList}>
                                 {employee.pastProjects && employee.pastProjects.length > 0 ? (
                                     employee.pastProjects.map((project) => (
@@ -217,24 +239,27 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                     <p style={{ color: '#605e5c', fontSize: '14px' }}>No projects listed</p>
                                 )}
                             </div>
-                        </div>
+                        </ProfileSection>
                     </div>
                 )}
 
                 {activeTab === 'organization' && (
                     <div className={`${styles.tabContent} ${styles.active}`}>
                         {/* People I Work With */}
-                        <div className={styles.contentCard}>
-                            <div className={styles.cardHeader}>
-                                <div className={styles.cardIcon}>👥</div>
-                                <h2 className={styles.cardTitle}>People I Work With</h2>
-                            </div>
+                        <ProfileSection
+                            icon="👥"
+                            title="People I Work With"
+                            cardClassName={styles.contentCard}
+                            headerClassName={styles.cardHeader}
+                            iconClassName={styles.cardIcon}
+                            titleClassName={styles.cardTitle}
+                        >
                             <div className={styles.colleaguesContainer}>
                                 {employee.colleagues && employee.colleagues.length > 0 ? (
                                     employees
                                         .filter((emp: IEmployee) => employee.colleagues?.includes(emp.id))
                                         .map((colleague: IEmployee) => (
-                                            <div
+                                            <button
                                                 key={colleague.id}
                                                 className={styles.colleagueAvatar}
                                                 title={colleague.displayName}
@@ -242,22 +267,26 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                                     if (onAuditLog) onAuditLog('Profile Interaction', colleague.displayName || colleague.mail || '', { source: 'ColleagueCircle', action: 'ViewProfile' });
                                                     if (onEmployeeSelect) onEmployeeSelect(colleague);
                                                 }}
+                                                aria-label={`View profile of ${colleague.displayName}`}
                                             >
                                                 {colleague.initials}
-                                            </div>
+                                            </button>
                                         ))
                                 ) : (
                                     <p style={{ color: '#605e5c', fontSize: '14px' }}>No colleagues listed</p>
                                 )}
                             </div>
-                        </div>
+                        </ProfileSection>
 
                         {/* Organization Structure */}
-                        <div className={styles.contentCard}>
-                            <div className={styles.cardHeader}>
-                                <div className={styles.cardIcon}>🏢</div>
-                                <h2 className={styles.cardTitle}>Organization Structure</h2>
-                            </div>
+                        <ProfileSection
+                            icon="🏢"
+                            title="Organization Structure"
+                            cardClassName={styles.contentCard}
+                            headerClassName={styles.cardHeader}
+                            iconClassName={styles.cardIcon}
+                            titleClassName={styles.cardTitle}
+                        >
                             <OrgChart
                                 employees={employees}
                                 currentEmployeeId={employee.id}
@@ -268,7 +297,7 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                                 }}
                                 layout={orgChartLayout}
                             />
-                        </div>
+                        </ProfileSection>
                     </div>
                 )}
             </div>

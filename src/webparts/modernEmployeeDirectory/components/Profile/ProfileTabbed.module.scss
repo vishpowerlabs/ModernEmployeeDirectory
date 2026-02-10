@@ -9,9 +9,9 @@
 }
 
 .topBarInner {
-    max-width: 1200px;
+    max-width: var(--max-width);
     margin: 0 auto;
-    padding: 16px 20px;
+    padding: var(--spacing-md) var(--spacing-xl); // Match TopBar padding
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -62,9 +62,9 @@
 }
 
 .container {
-    max-width: 1200px;
+    max-width: var(--max-width);
     margin: 0 auto;
-    padding: 32px 40px;
+    padding: var(--spacing-xl); // Use consistent spacing
 }
 
 .profileHeader {

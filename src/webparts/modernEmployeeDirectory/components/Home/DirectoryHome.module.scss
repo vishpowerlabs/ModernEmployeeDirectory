@@ -78,8 +78,8 @@
     backdrop-filter: blur(10px);
 
     :global(.container) {
-        padding-top: var(--spacing-lg);
-        padding-bottom: var(--spacing-lg);
+        padding-top: var(--spacing-xl); // Increased padding for alphabet section
+        padding-bottom: var(--spacing-xl);
         text-align: center;
     }
 

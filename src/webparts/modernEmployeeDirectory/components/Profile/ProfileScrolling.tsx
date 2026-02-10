@@ -2,6 +2,7 @@ import * as React from 'react';
 import styles from './ProfileScrolling.module.scss';
 import { IEmployee } from '../Home/DirectoryHome';
 import { OrgChart } from '../Shared/OrgChart';
+import { ContactItem, ActionButton, ProfileSection } from './ProfileCommon';
 
 export interface IProfileScrollingProps {
     employee: IEmployee;
@@ -76,36 +77,41 @@ export const ProfileScrolling: React.FunctionComponent<IProfileScrollingProps> =
                         <h1 className={styles.profileName}>{employee.displayName}</h1>
                         <div className={styles.profileTitle}>{employee.jobTitle || 'N/A'}</div>
                         <div className={styles.profileLocation}>
-                            <span className={styles.headerContactItem}>✉️ {employee.mail || employee.userPrincipalName || 'N/A'}</span>
-                            <span className={styles.headerContactItem}>📞 {employee.businessPhones?.[0] || employee.mobilePhone || 'N/A'}</span>
-                            <span className={styles.headerContactItem}>📍 {employee.city && employee.state ? `${employee.city}, ${employee.state}` : employee.officeLocation || 'N/A'}</span>
+                            <ContactItem icon="✉️" text={employee.mail || employee.userPrincipalName || 'N/A'} className={styles.headerContactItem} />
+                            <ContactItem icon="📞" text={employee.businessPhones?.[0] || employee.mobilePhone || 'N/A'} className={styles.headerContactItem} />
+                            <ContactItem icon="📍" text={employee.city && employee.state ? `${employee.city}, ${employee.state}` : employee.officeLocation || 'N/A'} className={styles.headerContactItem} />
                         </div>
 
                         <div className={styles.actionButtons}>
-                            <button className={styles.btnPrimary} onClick={() => _handleContactClick('Email')}>✉️ Email</button>
-                            <button className={styles.btnSecondary} onClick={() => _handleContactClick('Teams')}>💬 Teams</button>
-                            <button className={styles.btnSecondary} onClick={() => _handleContactClick('Call')}>📞 Call</button>
-                            <button
-                                className={styles.btnKudos}
+                            <ActionButton icon="✉️" label="Email" onClick={() => _handleContactClick('Email')} className={styles.btnPrimary} />
+                            <ActionButton icon="💬" label="Teams" onClick={() => _handleContactClick('Teams')} className={styles.btnSecondary} />
+                            <ActionButton icon="📞" label="Call" onClick={() => _handleContactClick('Call')} className={styles.btnSecondary} />
+                            <ActionButton
+                                icon="⭐"
+                                label="Give Kudos"
                                 onClick={() => {
                                     if (onAuditLog) onAuditLog('Kudos Interaction', employee.displayName || employee.mail || '', { source: 'ProfileButton', action: 'OpenKudosPanel' });
                                     onKudosClick();
                                 }}
-                            >
-                                ⭐ Give Kudos {kudosCount > 0 && <span className={styles.kudosCount}>{kudosCount}</span>}
-                            </button>
+                                className={styles.btnKudos}
+                                variant="kudos"
+                                kudosCount={kudosCount}
+                                kudosCountClassName={styles.kudosCount}
+                            />
                         </div>
                     </div>
                 </div>
 
                 {/* Content Grid */}
                 <div className={styles.contentGrid}>
-                    {/* Professional Bio */}
-                    <div className={`${styles.sectionCard} ${styles.fullWidth}`}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardIcon}>👤</div>
-                            <h3 className={styles.cardTitle}>Professional Bio</h3>
-                        </div>
+                    <ProfileSection
+                        icon="👤"
+                        title="Professional Bio"
+                        cardClassName={`${styles.sectionCard} ${styles.fullWidth}`}
+                        headerClassName={styles.cardHeader}
+                        iconClassName={styles.cardIcon}
+                        titleClassName={styles.cardTitle}
+                    >
                         <div className={styles.cardContent}>
                             {employee.aboutMe ? (
                                 <p>{employee.aboutMe}</p>
@@ -113,14 +119,17 @@ export const ProfileScrolling: React.FunctionComponent<IProfileScrollingProps> =
                                 <p style={{ color: '#605e5c', fontSize: '14px' }}>No bio available</p>
                             )}
                         </div>
-                    </div>
+                    </ProfileSection>
 
                     {/* Skills */}
-                    <div className={styles.sectionCard}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardIcon}>💡</div>
-                            <h3 className={styles.cardTitle}>Skills & Expertise</h3>
-                        </div>
+                    <ProfileSection
+                        icon="💡"
+                        title="Skills & Expertise"
+                        cardClassName={styles.sectionCard}
+                        headerClassName={styles.cardHeader}
+                        iconClassName={styles.cardIcon}
+                        titleClassName={styles.cardTitle}
+                    >
                         <div className={styles.skillsContainer}>
                             {employee.skills && employee.skills.length > 0 ? (
                                 employee.skills.map((skill) => (
@@ -130,14 +139,17 @@ export const ProfileScrolling: React.FunctionComponent<IProfileScrollingProps> =
                                 <p style={{ color: '#605e5c', fontSize: '14px' }}>No skills listed</p>
                             )}
                         </div>
-                    </div>
+                    </ProfileSection>
 
                     {/* Interests */}
-                    <div className={styles.sectionCard}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardIcon}>🎯</div>
-                            <h3 className={styles.cardTitle}>Interests</h3>
-                        </div>
+                    <ProfileSection
+                        icon="🎯"
+                        title="Interests"
+                        cardClassName={styles.sectionCard}
+                        headerClassName={styles.cardHeader}
+                        iconClassName={styles.cardIcon}
+                        titleClassName={styles.cardTitle}
+                    >
                         <div className={styles.skillsContainer}>
                             {employee.interests && employee.interests.length > 0 ? (
                                 employee.interests.map((interest) => (
@@ -147,14 +159,17 @@ export const ProfileScrolling: React.FunctionComponent<IProfileScrollingProps> =
                                 <p style={{ color: '#605e5c', fontSize: '14px' }}>No interests listed</p>
                             )}
                         </div>
-                    </div>
+                    </ProfileSection>
 
                     {/* Projects */}
-                    <div className={styles.sectionCard}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardIcon}>📁</div>
-                            <h3 className={styles.cardTitle}>Recent Projects</h3>
-                        </div>
+                    <ProfileSection
+                        icon="📁"
+                        title="Recent Projects"
+                        cardClassName={styles.sectionCard}
+                        headerClassName={styles.cardHeader}
+                        iconClassName={styles.cardIcon}
+                        titleClassName={styles.cardTitle}
+                    >
                         <div className={styles.projectsList}>
                             {employee.pastProjects && employee.pastProjects.length > 0 ? (
                                 employee.pastProjects.map((project) => (
@@ -169,14 +184,17 @@ export const ProfileScrolling: React.FunctionComponent<IProfileScrollingProps> =
                                 <p style={{ color: '#605e5c', fontSize: '14px' }}>No projects listed</p>
                             )}
                         </div>
-                    </div>
+                    </ProfileSection>
 
                     {/* Organization Chart */}
-                    <div className={`${styles.sectionCard} ${styles.fullWidth}`}>
-                        <div className={styles.cardHeader}>
-                            <div className={styles.cardIcon}>🏢</div>
-                            <h3 className={styles.cardTitle}>Organization Structure</h3>
-                        </div>
+                    <ProfileSection
+                        icon="🏢"
+                        title="Organization Structure"
+                        cardClassName={`${styles.sectionCard} ${styles.fullWidth}`}
+                        headerClassName={styles.cardHeader}
+                        iconClassName={styles.cardIcon}
+                        titleClassName={styles.cardTitle}
+                    >
                         <OrgChart
                             employees={employees}
                             currentEmployeeId={employee.id}
@@ -187,7 +205,7 @@ export const ProfileScrolling: React.FunctionComponent<IProfileScrollingProps> =
                             }}
                             layout={orgChartLayout}
                         />
-                    </div>
+                    </ProfileSection>
                 </div>
             </div>
         </div>

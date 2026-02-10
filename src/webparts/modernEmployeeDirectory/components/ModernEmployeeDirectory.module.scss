@@ -2,7 +2,7 @@
 
 .modernEmployeeDirectory {
   // CSS Variables from Mockup
-  --max-width: 1400px;
+  --max-width: 100%;
   --spacing-xs: 8px;
   --spacing-sm: 12px;
   --spacing-md: 16px;
@@ -33,7 +33,7 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg-light);
   color: var(--text-dark);
-  padding: var(--spacing-xs);
+  padding: 0; // Removed default padding to allow sections to hit edges
 
   * {
     box-sizing: border-box;
@@ -41,11 +41,11 @@
 
   // Utility classes used across components
   .container {
-    max-width: var(--max-width);
+    max-width: 100%; // Ensure it spans full width
     margin-left: auto;
     margin-right: auto;
-    padding-left: var(--spacing-lg);
-    padding-right: var(--spacing-lg);
+    padding-left: var(--spacing-xl);
+    padding-right: var(--spacing-xl);
   }
 
   /* Overlay */
