@@ -1,8 +1,7 @@
 import * as React from 'react';
 import styles from './ProfileTabbed.module.scss';
 import { IEmployee } from '../Home/DirectoryHome';
-import { OrgChart } from '../Shared/OrgChart';
-import { ContactItem, ActionButton, ProfileSection } from './ProfileCommon';
+import { ContactItem, ActionButton, ProfileSection, ProfileTopBar, ProfileOrgChart, handleProfileContactClick } from './ProfileCommon';
 
 export interface IProfileTabbedProps {
     employee: IEmployee;
@@ -25,46 +24,12 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
     };
 
     const _handleContactClick = (type: 'Email' | 'Teams' | 'Call'): void => {
-        if (onAuditLog) {
-            onAuditLog(
-                `Profile Contact: ${type}`,
-                employee.displayName || employee.mail || employee.id,
-                {
-                    contactType: type,
-                    targetMail: employee.mail,
-                    functionName: '_handleContactClick'
-                }
-            );
-        }
-
-        switch (type) {
-            case 'Email':
-                if (employee.mail) globalThis.location.href = `mailto:${employee.mail}`;
-                break;
-            case 'Teams':
-                if (employee.mail) globalThis.open(`https://teams.microsoft.com/l/chat/0/0?users=${employee.mail}`, '_blank');
-                break;
-            case 'Call': {
-                const phone = employee.businessPhones?.[0] || employee.mobilePhone;
-                if (phone) globalThis.location.href = `tel:${phone}`;
-                break;
-            }
-        }
+        handleProfileContactClick(type, employee, onAuditLog);
     };
 
     return (
         <div className={styles.profileTabbed}>
-            {/* Top Bar */}
-            <div className={styles.topBar}>
-                <div className={styles.topBarInner}>
-                    <div className={styles.pageTitle}>
-                        👥 Employee Directory
-                    </div>
-                    <button className={styles.backBtn} onClick={onBack}>
-                        ← Back to Directory
-                    </button>
-                </div>
-            </div>
+            <ProfileTopBar onBack={onBack} styles={styles} />
 
             <div className={styles.container}>
                 {/* Profile Header */}
@@ -279,25 +244,15 @@ export const ProfileTabbed: React.FunctionComponent<IProfileTabbedProps> = (prop
                         </ProfileSection>
 
                         {/* Organization Structure */}
-                        <ProfileSection
-                            icon="🏢"
-                            title="Organization Structure"
+                        <ProfileOrgChart
+                            employee={employee}
+                            employees={employees}
+                            onEmployeeSelect={onEmployeeSelect}
+                            onAuditLog={onAuditLog}
+                            orgChartLayout={orgChartLayout}
+                            styles={styles}
                             cardClassName={styles.contentCard}
-                            headerClassName={styles.cardHeader}
-                            iconClassName={styles.cardIcon}
-                            titleClassName={styles.cardTitle}
-                        >
-                            <OrgChart
-                                employees={employees}
-                                currentEmployeeId={employee.id}
-                                currentEmployee={employee}
-                                onEmployeeClick={(emp) => {
-                                    if (onAuditLog) onAuditLog('Org Chart Interaction', emp.displayName || emp.mail || '', { source: 'OrgChartNode', action: 'ViewProfile' });
-                                    if (onEmployeeSelect) onEmployeeSelect(emp);
-                                }}
-                                layout={orgChartLayout}
-                            />
-                        </ProfileSection>
+                        />
                     </div>
                 )}
             </div>

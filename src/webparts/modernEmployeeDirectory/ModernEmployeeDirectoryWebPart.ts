@@ -466,58 +466,10 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                     key: 'kudosListPickerFieldId'
                   }),
                   ...(this.properties.kudosListId ? [
-                    PropertyFieldColumnPicker('kudosRecipientColumn', {
-                      label: 'Recipient Column',
-                      context: this.context as unknown as any,
-                      selectedColumn: this.properties.kudosRecipientColumn,
-                      listId: this.properties.kudosListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'kudosRecipientColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
-                    PropertyFieldColumnPicker('kudosAuthorColumn', {
-                      label: 'Author Column',
-                      context: this.context as unknown as any,
-                      selectedColumn: this.properties.kudosAuthorColumn,
-                      listId: this.properties.kudosListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'kudosAuthorColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
-                    PropertyFieldColumnPicker('kudosMessageColumn', {
-                      label: 'Message Column',
-                      context: this.context as unknown as any,
-                      selectedColumn: this.properties.kudosMessageColumn,
-                      listId: this.properties.kudosListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'kudosMessageColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
-                    PropertyFieldColumnPicker('kudosBadgeTypeColumn', {
-                      label: 'Badge Type Column',
-                      context: this.context as unknown as any,
-                      selectedColumn: this.properties.kudosBadgeTypeColumn,
-                      listId: this.properties.kudosListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.kudosListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'kudosBadgeTypeColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    })
+                    this._getColumnPickerProperty('kudosRecipientColumn', 'Recipient Column', this.properties.kudosListId, 'kudosRecipientColumnPickerFieldId'),
+                    this._getColumnPickerProperty('kudosAuthorColumn', 'Author Column', this.properties.kudosListId, 'kudosAuthorColumnPickerFieldId'),
+                    this._getColumnPickerProperty('kudosMessageColumn', 'Message Column', this.properties.kudosListId, 'kudosMessageColumnPickerFieldId'),
+                    this._getColumnPickerProperty('kudosBadgeTypeColumn', 'Badge Type Column', this.properties.kudosListId, 'kudosBadgeTypeColumnPickerFieldId'),
                   ] : [])
                 ] : [])
               ]
@@ -587,66 +539,10 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
                     key: 'auditListPickerFieldId'
                   }),
                   ...(this.properties.auditListId ? [
-                    PropertyFieldColumnPicker('auditActivityColumn', {
-                      label: 'Activity Column',
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      context: this.context as any,
-                      selectedColumn: this.properties.auditActivityColumn,
-                      listId: this.properties.auditListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'auditActivityColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
-                    PropertyFieldColumnPicker('auditActorColumn', {
-                      label: 'Actor (Person) Column',
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      context: this.context as any,
-                      selectedColumn: this.properties.auditActorColumn,
-                      listId: this.properties.auditListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'auditActorColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
-                    PropertyFieldColumnPicker('auditTargetColumn', {
-                      label: 'Target (Text/Person) Column',
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      context: this.context as any,
-                      selectedColumn: this.properties.auditTargetColumn,
-                      listId: this.properties.auditListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'auditTargetColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
-                    PropertyFieldColumnPicker('auditDetailsColumn', {
-                      label: 'Details (Multi-line) Column',
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      context: this.context as any,
-                      selectedColumn: this.properties.auditDetailsColumn,
-                      listId: this.properties.auditListId,
-                      disabled: false,
-                      orderBy: PropertyFieldColumnPickerOrderBy.Title,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onPropertyChange: (p: string, o: unknown, n: unknown) => { this._onColumnChange(p, o, n, this.properties.auditListId).catch((err: Error) => { console.error(err); }); },
-                      properties: this.properties,
-                      deferredValidationTime: 0,
-                      key: 'auditDetailsColumnPickerFieldId',
-                      displayHiddenColumns: false
-                    }),
+                    this._getColumnPickerProperty('auditActivityColumn', 'Activity Column', this.properties.auditListId, 'auditActivityColumnPickerFieldId'),
+                    this._getColumnPickerProperty('auditActorColumn', 'Actor (Person) Column', this.properties.auditListId, 'auditActorColumnPickerFieldId'),
+                    this._getColumnPickerProperty('auditTargetColumn', 'Target (Text/Person) Column', this.properties.auditListId, 'auditTargetColumnPickerFieldId'),
+                    this._getColumnPickerProperty('auditDetailsColumn', 'Details (Multi-line) Column', this.properties.auditListId, 'auditDetailsColumnPickerFieldId'),
                     PropertyPaneToggle('enableAuditDebug', {
                       label: 'Show Audit Debug Panel',
                       onText: 'Show',
@@ -660,6 +556,29 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
         }
       ]
     };
+  }
+
+  /**
+   * Helper to create a Column Picker property field to reduce duplication
+   */
+  private _getColumnPickerProperty(propertyPath: string, label: string, listId: string, key: string): any {
+    return PropertyFieldColumnPicker(propertyPath, {
+      label: label,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      context: this.context as any,
+      selectedColumn: (this.properties as any)[propertyPath],
+      listId: listId,
+      disabled: false,
+      orderBy: PropertyFieldColumnPickerOrderBy.Title,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onPropertyChange: (p: string, o: unknown, n: unknown) => {
+        this._onColumnChange(p, o, n, listId).catch((err: Error) => { console.error(err); });
+      },
+      properties: this.properties,
+      deferredValidationTime: 0,
+      key: key,
+      displayHiddenColumns: false
+    });
   }
 
   private _getFilterValueLabel(): string {

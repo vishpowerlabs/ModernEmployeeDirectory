@@ -179,15 +179,18 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       await this._loadEmployees();
       await this._fetchDynamicFilterValues();
 
-      if (this.props.enableKudos && this.kudosService) {
-        try {
-          const choices = await this.kudosService.getBadgeTypeChoices();
-          this.setState({ badgeChoices: choices });
-        } catch (error) {
-          console.error('[ModernEmployeeDirectory] Error loading badge choices:', error);
-        }
-      }
+      // Initialize Services
+      await this._initServicesOnMount();
     })().catch(err => { console.error(err); });
+  }
+
+  private async _initServicesOnMount(): Promise<void> {
+    if (this.props.enableKudos) {
+      await this._initializeKudosService();
+    }
+    if (this.props.enableAudit) {
+      this._initializeAuditService();
+    }
   }
 
   private async _initializeCurrentUser(): Promise<void> {
@@ -258,40 +261,30 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       }
 
       // Handle Component-Specific Setting Changes
-      await this._handleKudosPropChanges(prevProps);
-      await this._handleFilterSettingChanges(prevProps);
-      this._handleAuditPropChanges(prevProps);
-    })().catch(err => { console.error(err); });
-  }
+      const kudosPropsChanged = prevProps.enableKudos !== this.props.enableKudos ||
+        prevProps.kudosListId !== this.props.kudosListId ||
+        prevProps.kudosRecipientColumn !== this.props.kudosRecipientColumn ||
+        prevProps.kudosAuthorColumn !== this.props.kudosAuthorColumn ||
+        prevProps.kudosMessageColumn !== this.props.kudosMessageColumn ||
+        prevProps.kudosBadgeTypeColumn !== this.props.kudosBadgeTypeColumn;
 
-  private async _handleKudosPropChanges(prevProps: IModernEmployeeDirectoryProps): Promise<void> {
-    const kudosPropsChanged = prevProps.enableKudos !== this.props.enableKudos ||
-      prevProps.kudosListId !== this.props.kudosListId ||
-      prevProps.kudosRecipientColumn !== this.props.kudosRecipientColumn ||
-      prevProps.kudosAuthorColumn !== this.props.kudosAuthorColumn ||
-      prevProps.kudosMessageColumn !== this.props.kudosMessageColumn ||
-      prevProps.kudosBadgeTypeColumn !== this.props.kudosBadgeTypeColumn;
-
-    if (kudosPropsChanged) {
-      if (this.props.enableKudos && this.props.kudosListId) {
-        this.kudosService = new KudosService(this.props.context, {
-          listId: this.props.kudosListId,
-          recipientColumn: this.props.kudosRecipientColumn,
-          authorColumn: this.props.kudosAuthorColumn,
-          messageColumn: this.props.kudosMessageColumn,
-          badgeTypeColumn: this.props.kudosBadgeTypeColumn
-        });
-
-        try {
-          const choices = await this.kudosService.getBadgeTypeChoices();
-          this.setState({ badgeChoices: choices });
-        } catch (error) {
-          console.error('[ModernEmployeeDirectory] Error loading badge choices:', error);
-        }
-      } else {
-        this.kudosService = null;
+      if (kudosPropsChanged) {
+        await this._initializeKudosService();
       }
-    }
+
+      await this._handleFilterSettingChanges(prevProps);
+
+      const auditPropsChanged = prevProps.enableAudit !== this.props.enableAudit ||
+        prevProps.auditListId !== this.props.auditListId ||
+        prevProps.auditActivityColumn !== this.props.auditActivityColumn ||
+        prevProps.auditActorColumn !== this.props.auditActorColumn ||
+        prevProps.auditTargetColumn !== this.props.auditTargetColumn ||
+        prevProps.auditDetailsColumn !== this.props.auditDetailsColumn;
+
+      if (auditPropsChanged) {
+        this._initializeAuditService();
+      }
+    })().catch(err => { console.error(err); });
   }
 
   private async _handleFilterSettingChanges(prevProps: IModernEmployeeDirectoryProps): Promise<void> {
@@ -304,27 +297,39 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
     }
   }
 
-  private _handleAuditPropChanges(prevProps: IModernEmployeeDirectoryProps): void {
-    const auditPropsChanged = prevProps.enableAudit !== this.props.enableAudit ||
-      prevProps.auditListId !== this.props.auditListId ||
-      prevProps.auditActivityColumn !== this.props.auditActivityColumn ||
-      prevProps.auditActorColumn !== this.props.auditActorColumn ||
-      prevProps.auditTargetColumn !== this.props.auditTargetColumn ||
-      prevProps.auditDetailsColumn !== this.props.auditDetailsColumn;
+  private async _initializeKudosService(): Promise<void> {
+    if (this.props.enableKudos && this.props.kudosListId) {
+      this.kudosService = new KudosService(this.props.context, {
+        listId: this.props.kudosListId,
+        recipientColumn: this.props.kudosRecipientColumn,
+        authorColumn: this.props.kudosAuthorColumn,
+        messageColumn: this.props.kudosMessageColumn,
+        badgeTypeColumn: this.props.kudosBadgeTypeColumn
+      });
 
-    if (auditPropsChanged) {
-      if (this.props.enableAudit && this.props.auditListId) {
-        this.auditService = new AuditService(this.props.context, {
-          listId: this.props.auditListId,
-          activityColumn: this.props.auditActivityColumn,
-          actorColumn: this.props.auditActorColumn,
-          targetColumn: this.props.auditTargetColumn,
-          detailsColumn: this.props.auditDetailsColumn,
-          onLog: (msg, type) => this._handleAuditLogMessage(msg, type)
-        });
-      } else {
-        this.auditService = null;
+      try {
+        const choices = await this.kudosService.getBadgeTypeChoices();
+        this.setState({ badgeChoices: choices });
+      } catch (error) {
+        console.error('[ModernEmployeeDirectory] Error loading badge choices:', error);
       }
+    } else {
+      this.kudosService = null;
+    }
+  }
+
+  private _initializeAuditService(): void {
+    if (this.props.enableAudit && this.props.auditListId) {
+      this.auditService = new AuditService(this.props.context, {
+        listId: this.props.auditListId,
+        activityColumn: this.props.auditActivityColumn,
+        actorColumn: this.props.auditActorColumn,
+        targetColumn: this.props.auditTargetColumn,
+        detailsColumn: this.props.auditDetailsColumn,
+        onLog: (msg, type) => this._handleAuditLogMessage(msg, type)
+      });
+    } else {
+      this.auditService = null;
     }
   }
 
