@@ -2,7 +2,7 @@
 
 ## 💬 Community & Feedback
 
-This project is evolving with real-world usage — your input matters.
+This project is evolving with real-world usage — your input matters. if you like it start this repo 
 
 ### 💡 Start a Discussion
 Have ideas, architecture questions, or want to share how you're using this in your organisation?
