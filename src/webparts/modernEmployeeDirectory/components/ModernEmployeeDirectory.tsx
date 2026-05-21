@@ -3,6 +3,7 @@ import styles from './ModernEmployeeDirectory.module.scss';
 import type { IModernEmployeeDirectoryProps } from './IModernEmployeeDirectoryProps';
 import { TopBar } from './Shared/TopBar';
 import { SidePanel } from './Shared/SidePanel';
+import { ProfileModal } from './Profile/ProfileModal';
 import { DirectoryHome, IEmployee } from './Home/DirectoryHome';
 import { ProfileScrolling } from './Profile/ProfileScrolling';
 import { ProfileTabbed } from './Profile/ProfileTabbed';
@@ -671,9 +672,12 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
       }
     }
 
+    const isModal = this.props.profileLayout === 'modal';
+    const nextView = isModal ? this.state.currentView : (this.props.profileLayout === 'scroll' ? 'PROFILE_SCROLL' : 'PROFILE_TAB');
+
     this.setState({
       selectedEmployee: detailedEmployee,
-      currentView: this.props.profileLayout === 'scroll' ? 'PROFILE_SCROLL' : 'PROFILE_TAB',
+      currentView: nextView,
       selectedEmployeeKudosCount: kudosCount
     });
 
@@ -1027,6 +1031,20 @@ export default class ModernEmployeeDirectory extends React.Component<IModernEmpl
             />
           )}
         </div>
+
+        {/* Modal Profile Overlay */}
+        {this.props.profileLayout === 'modal' && selectedEmployee && (
+          <ProfileModal
+            employee={selectedEmployee}
+            employees={this.state.employees}
+            kudosCount={this.state.selectedEmployeeKudosCount}
+            onClose={() => this.setState({ selectedEmployee: null })}
+            onKudosClick={() => this._toggleSidePanel('kudos')}
+            onEmployeeSelect={this._handleSelectEmployee}
+            orgChartLayout={this.props.orgChartLayout}
+            onAuditLog={this._handleAuditLog}
+          />
+        )}
 
         {/* Audit Debug Panel */}
         {this.props.enableAuditDebug && (

@@ -26,7 +26,7 @@ import { GraphService } from './services/GraphService';
 
 export interface IModernEmployeeDirectoryWebPartProps {
   description: string;
-  profileLayout: 'scroll' | 'tab';
+  profileLayout: 'scroll' | 'tab' | 'modal';
   mainHeadingSize: number;
   subHeadingSize: number;
   contentHeadingSize: number;
@@ -308,11 +308,13 @@ export default class ModernEmployeeDirectoryWebPart extends BaseClientSideWebPar
               groupName: "Layout & Theme",
               groupFields: [
                 PropertyPaneDropdown('profileLayout', {
-                  label: 'Profile Layout',
+                  label: 'Profile Viewing Style',
                   options: [
-                    { key: 'scroll', text: 'Scrolling' },
-                    { key: 'tab', text: 'Tabbed' }
-                  ]
+                    { key: 'scroll', text: 'Classic Scrolling' },
+                    { key: 'tab', text: 'Modern Tabbed' },
+                    { key: 'modal', text: 'Modal Overlay (Contextual)' }
+                  ],
+                  selectedKey: this.properties.profileLayout || 'scroll'
                 }),
                 PropertyPaneDropdown('orgChartLayout', {
                   label: 'Org Chart Layout',

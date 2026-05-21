@@ -6,7 +6,7 @@ export interface IModernEmployeeDirectoryProps {
   environmentMessage: string;
   hasTeamsContext: boolean;
   userDisplayName: string;
-  profileLayout: 'scroll' | 'tab';
+  profileLayout: 'scroll' | 'tab' | 'modal';
   mainHeadingSize: number;
   subHeadingSize: number;
   contentHeadingSize: number;
